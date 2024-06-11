@@ -17,13 +17,17 @@ limitations under the License.
 package aws
 
 import (
-	"encoding/json"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudwatch"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
-	"github.com/cortexlabs/cortex/pkg/lib/errors"
+    "fmt"
+    "encoding/json"
+    "github.com/aws/aws-sdk-go/aws"
+    "github.com/aws/aws-sdk-go/aws/session"
+    "github.com/aws/aws-sdk-go/service/cloudwatch"
+    "github.com/aws/aws-sdk-go/service/cloudwatchlogs"
+    "github.com/cortexlabs/cortex/pkg/lib/errors"
+    "github.com/aws/aws-sdk-go/service/sts"
 )
+
+
 
 var (
 	_dashboardMinWidthUnits  = 1
@@ -80,18 +84,36 @@ type CloudWatchWidgetGrid struct {
 	Widgets      []CloudWatchWidget `json:"widgets"`
 }
 
-func (c *Client) DoesLogGroupExist(logGroup string) (bool, error) {
-	_, err := c.CloudWatchLogs().ListTagsLogGroup(&cloudwatchlogs.ListTagsLogGroupInput{
-		LogGroupName: aws.String(logGroup),
-	})
-	if err != nil {
-		if IsErrCode(err, "ResourceNotFoundException") {
-			return false, nil
-		}
-		return false, errors.Wrap(err, "log group "+logGroup)
-	}
+func (c *Client) getAccountID() (string, error) {
+    svc := sts.New(session.Must(session.NewSession()))
+    input := &sts.GetCallerIdentityInput{}
+    result, err := svc.GetCallerIdentity(input)
+    if err != nil {
+        return "", errors.Wrap(err, "failed to get account ID")
+    }
+    return *result.Account, nil
+}
 
-	return true, nil
+func (c *Client) DoesLogGroupExist(logGroup string) (bool, error) {
+    accountID, err := c.getAccountID()
+    if err != nil {
+        return false, err
+    }
+
+    region := *c.CloudWatchLogs().Config.Region
+    resourceArn := fmt.Sprintf("arn:aws:logs:%s:%s:log-group:%s", region, accountID, logGroup)
+
+    _, err = c.CloudWatchLogs().ListTagsForResource(&cloudwatchlogs.ListTagsForResourceInput{
+        ResourceArn: aws.String(resourceArn),
+    })
+    if err != nil {
+        if IsErrCode(err, "ResourceNotFoundException") {
+            return false, nil
+        }
+        return false, errors.Wrap(err, "log group "+logGroup)
+    }
+
+    return true, nil
 }
 
 func (c *Client) CreateLogGroup(logGroup string, tags map[string]string) error {
