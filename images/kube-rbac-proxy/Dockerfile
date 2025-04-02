@@ -23,7 +23,7 @@ RUN go mod download
 RUN GO111MODULE=on CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build --installsuffix cgo -o kube-rbac-proxy .
 RUN cp kube-rbac-proxy /usr/local/bin
 
-FROM alpine:3.18
+FROM alpine:3.21
 RUN apk add -U --no-cache ca-certificates && rm -rf /var/cache/apk/*
 COPY --from=builder /usr/local/bin/kube-rbac-proxy /kube-rbac-proxy
 ENTRYPOINT ["/kube-rbac-proxy"]
