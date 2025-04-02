@@ -58,5 +58,6 @@ Let's update it in generate_eks.py.
 ---
 Check if eksctl iam polices changed by comparing the previous version of the eksctl policy docs to the new version's and update `./dev/minimum_aws_policy.json` .
 We find some changes and update accordingly. 
-
-and latest kubernetes ver: "1.32"
+---
+newest kubernetes version is 1.32.
+We update it in generate_eks.py
