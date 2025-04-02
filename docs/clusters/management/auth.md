@@ -102,6 +102,7 @@ Replace the following placeholders with their respective values in the policy te
             "Action": [
                 "logs:ListTagsForResource",
                 "iam:GetRole",
+                "iam:GetUser",
                 "logs:TagLogGroup",
                 "ssm:GetParameters",
                 "ssm:GetParameter",
@@ -111,7 +112,8 @@ Replace the following placeholders with their respective values in the policy te
                 "arn:*:ssm:*:$CORTEX_ACCOUNT_ID:parameter/aws/*",
                 "arn:*:ssm:*::parameter/aws/*",
                 "arn:*:logs:$CORTEX_REGION:$CORTEX_ACCOUNT_ID:log-group:$CORTEX_CLUSTER_NAME",
-                "arn:*:iam::$CORTEX_ACCOUNT_ID:role/*"
+                "arn:*:iam::$CORTEX_ACCOUNT_ID:role/*",
+                "arn:*:iam::$CORTEX_ACCOUNT_ID:user/*"
             ]
         },
         {
@@ -121,6 +123,7 @@ Replace the following placeholders with their respective values in the policy te
                 "logs:ListTagsForResource",
                 "logs:DescribeLogStreams",
                 "iam:TagRole",
+                "iam:UntagRole",
                 "iam:GetPolicy",
                 "iam:CreatePolicy",
                 "iam:DeletePolicy",
@@ -131,6 +134,7 @@ Replace the following placeholders with their respective values in the policy te
                 "iam:PutRolePolicy",
                 "iam:AddRoleToInstanceProfile",
                 "iam:ListInstanceProfilesForRole",
+                "iam:UpdateAssumeRolePolicy",
                 "iam:PassRole",
                 "logs:CreateLogStream",
                 "iam:DetachRolePolicy",

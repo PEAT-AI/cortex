@@ -37,6 +37,7 @@ make test
 ran into an issue where we couldn't connect to localstack (s3). It didn't find a bucket "health".
 We changed the test so it's now testing the creation of a SQS queue.
 
+
 ---
 skip make tools, requires newer go version. maybe get new go version later, when we know which one.
 ---
@@ -46,5 +47,16 @@ https://github.com/weaveworks/eksctl/releases
 latest version is eksctl 0.206.0
 old version is v0.143.0
 so search & replace 0.143/0.206.0
+
+---
+check what we did in generate_eks.py before. Ah, we updated the
+aws-vpc-cni version to 1.12.6. What is it currently in eksctl?
+We check eksctl/pkg/addons/default/assets/aws-node.yaml of current eksctl
+and conclude it's v1.19.3.
+Let's update it in generate_eks.py.  
+
+---
+Check if eksctl iam polices changed by comparing the previous version of the eksctl policy docs to the new version's and update `./dev/minimum_aws_policy.json` .
+We find some changes and update accordingly. 
 
 and latest kubernetes ver: "1.32"
