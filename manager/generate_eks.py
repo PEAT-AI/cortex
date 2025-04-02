@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import json
-import click
-
-from collections import namedtuple
 import re
+from collections import namedtuple
+
+import click
 import yaml
 
 K8S_VERSION = "1.26"
@@ -406,7 +406,7 @@ def generate_eks(
         "addons": [
             {
                 "name": "vpc-cni",
-                "version": "1.12.6",
+                "version": "1.19.3",
             },
         ],
     }
