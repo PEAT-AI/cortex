@@ -106,3 +106,6 @@ We have already updated the aws cni version above.
 ## go
 latest version is 1.24.0 (previously: 1.20.4)
 search & replace 1.20.4/1.24.0
+
+look up a few version numbers, mostly for k8s and istio, and run the go module update steps.
+Commit go.mod & go.sum.
