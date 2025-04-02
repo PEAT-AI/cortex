@@ -86,11 +86,11 @@ wget -q -O cni_supported_instances_prev.txt https://raw.githubusercontent.com/aw
      ```shell
         mkdir -p $HOME/temp
         cd $HOME/temp
-        wget https://dl.google.com/go/go1.20.4.linux-amd64.tar.gz && \
-        tar -xvf go1.20.4.linux-amd64.tar.gz && \
+        wget https://dl.google.com/go/go1.24.0.linux-amd64.tar.gz && \
+        tar -xvf go1.24.0.linux-amd64.tar.gz && \
         sudo rm -rf /usr/local/go && \
         sudo mv -f go /usr/local && \
-        rm go1.20.4.linux-amd64.tar.gz && \
+        rm go1.24.0.linux-amd64.tar.gz && \
         if [ -f $HOME/.bash_profile ]; then source $HOME/.bash_profile; else source $HOME/.bashrc; fi && \
         cd - && \
         go version
@@ -198,7 +198,7 @@ see https://github.com/moby/moby/issues/39302#issuecomment-639687466_
 
 ## Cluster autoscaler
 
-1. Find the latest patch release for our current version of k8s (e.g. k8s v1.17 -> cluster-autocluster v1.20.4)
+1. Find the latest patch release for our current version of k8s (e.g. k8s v1.17 -> cluster-autocluster v1.24.0)
    on [GitHub](https://github.com/kubernetes/autoscaler/releases) and check the changelog
 1. In the [GitHub Repo](https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/aws),
    set the tree to the tag for the chosen release, and open `cloudprovider/aws/examples/cluster-autoscaler-autodiscover.yaml`
