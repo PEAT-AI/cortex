@@ -59,5 +59,11 @@ Let's update it in generate_eks.py.
 Check if eksctl iam polices changed by comparing the previous version of the eksctl policy docs to the new version's and update `./dev/minimum_aws_policy.json` .
 We find some changes and update accordingly. 
 ---
+## Kubernetes
 newest kubernetes version is 1.32.
-We update it in generate_eks.py
+We update it in generate_eks.py and generate_ami_mapping.go
+---
+we update ami.json by running:
+```sh
+go run build/generate_ami_mapping.go manager/manifests/ami.json public
+```
