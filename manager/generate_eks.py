@@ -19,7 +19,7 @@ from collections import namedtuple
 import click
 import yaml
 
-K8S_VERSION = "1.32"
+K8S_VERSION = "1.31"
 AMI_FAMILY = "AmazonLinux2"
 
 ParsedInstanceType = namedtuple(

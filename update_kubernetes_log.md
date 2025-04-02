@@ -77,5 +77,11 @@ https://github.com/kubernetes-sigs/aws-iam-authenticator
 Which version is it at?
 0.6.30 (previously: 0.5.9). We update it in 
 manager/Dockerfile
+---
+kubectl
+latest stable version is 1.31.
+oh. so maybe k8s 1.32 is not stable? ok let's change it to 1.31 everywhere.
+regenerate ami and so on.
+
 
 
