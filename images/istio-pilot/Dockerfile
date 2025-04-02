@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM docker.io/istio/pilot:1.17.2
+FROM docker.io/istio/pilot:1.23.5

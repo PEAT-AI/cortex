@@ -82,6 +82,27 @@ kubectl
 latest stable version is 1.31.
 oh. so maybe k8s 1.32 is not stable? ok let's change it to 1.31 everywhere.
 regenerate ami and so on.
+sidenote: kubectl that was installed with brew was version 1.32. 
 
+## istio
+old version 1.17.2
+new version 1.23.5
+search & replace
 
+versions.md tells us to adapt some other istio files.
+I don't currently know how and if, so let's skip it for now.
+I assume if something is wrong we will run into errors later and fix
+them as they occur.
 
+## aws cni
+we find the new location of the vpc ip resource limit file is
+https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/v${NEW_RELEASE}/pkg/vpc/vpc_ip_resource_limit.go
+
+But it's formatted differently, so a diff is looking not good. 
+Also there's too many differences and we don't care for all the new instance types, so
+let's ignore this.
+We have already updated the aws cni version above. 
+
+## go
+latest version is 1.24.0 (previously: 1.20.4)
+search & replace 1.20.4/1.24.0
