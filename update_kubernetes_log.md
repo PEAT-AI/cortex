@@ -67,3 +67,15 @@ we update ami.json by running:
 ```sh
 go run build/generate_ami_mapping.go manager/manifests/ami.json public
 ```
+--- 
+skip kube-proxy part for now. I think i skipped it last time as well.
+if we observe problems, this is something we can check later.
+---
+aws-iam-authenticator
+The link in versions.md is not working anymore. Let's try
+https://github.com/kubernetes-sigs/aws-iam-authenticator
+Which version is it at?
+0.6.30 (previously: 0.5.9). We update it in 
+manager/Dockerfile
+
+
