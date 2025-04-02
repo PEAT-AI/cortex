@@ -208,7 +208,7 @@ see https://github.com/moby/moby/issues/39302#issuecomment-639687466_
 1. Checkout our updated branch: `git checkout cluster-autoscaler-1.21.1-cortex`
 1. List the most recent commit: `git log`
 1. Reset the latest commit (use the SHA of the last non-cortex commit): `git reset <SHA>`
-1. `git add *`
+1. `git add .`
 1. `git stash`
 1. `git remote add upstream https://github.com/kubernetes/autoscaler.git`
 1. `git fetch upstream`

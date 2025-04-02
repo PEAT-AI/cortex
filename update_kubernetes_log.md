@@ -109,3 +109,43 @@ search & replace 1.20.4/1.24.0
 
 look up a few version numbers, mostly for k8s and istio, and run the go module update steps.
 Commit go.mod & go.sum.
+
+## nvidia device plugin and other gpu related stuff
+skip for now. Hope it works with old version.
+Only update what's critical for now, see if we get this thing running.
+
+## cluster autoscaler
+we compare the diff like described in versions.md and move selectively some stuff from the new autoscaler cluster yaml
+to the cortex version.
+It says "--expander=least-waste". I don't know what this is, but I feel it's safer to not copy it as it probably
+will mess with the carefully tuned current autoscaling.
+
+checkout autoscaler fork:
+```sh
+gh repo clone PEAT-AI/autoscaler
+git checkout cluster-autoscaler-1.26.3-cortex
+git log
+```
+latest commit is
+e903cb56a015c4693eb85c00fa6100cb835e0974
+latest non-cortex commit is
+cd86044bf66cb91531e835f6746c17277dd5ac22
+
+```sh
+git reset cd86044bf66cb91531e835f6746c17277dd5ac22
+git add .
+git stash
+git fetch upstream
+git checkout cluster-autoscaler-1.31.2 -b cluster-autoscaler-1.31.2-cortex
+git stash pop
+```
+Resolve merge conflicts.
+So basically in cortex we add:
+
+ScaleUpRateLimitEnabled bool
+ScaleUpMaxNumberOfNodesPerMin int
+ScaleUpBurstMaxNumberOfNodesPerMin int
+
+so in vscode we go in the merge conflict editor and always choose
+"accept combination" when possible.
+
