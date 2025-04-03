@@ -149,3 +149,32 @@ ScaleUpBurstMaxNumberOfNodesPerMin int
 so in vscode we go in the merge conflict editor and always choose
 "accept combination" when possible.
 
+We also apply fixes to autoscaler that we have on the 27.2 branch.
+
+## 
+Now we try to get the tests running:
+```
+make test
+```
+We get lots of errors like this:
+```
+# github.com/docker/distribution/reference                                                                                                                                                                                                                                        ../../go/pkg/mod/github.com/docker/distribution@v2.8.3+incompatible/reference/reference_deprecated.go:122:19: undefined: reference.SplitHostname
+# github.com/docker/cli/opts                                                                                                                                                                                                                                                      ../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/ulimit.go:13:32: undefined: container.Ulimit                                                                                                                                                                     ../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/ulimit.go:17:46: undefined: container.Ulimit                                                                                                                                                                     ../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/ulimit.go:20:32: undefined: container.Ulimit                                                                                                                                                                     ../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/ulimit.go:49:44: undefined: container.Ulimit                                                                                                                                                                     ../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/mount.go:125:19: bindOptions().ReadOnlyNonRecursive undefined (type *mount.BindOptions has no field or method ReadOnlyNonRecursive)
+../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/mount.go:127:19: bindOptions().ReadOnlyForceRecursive undefined (type *mount.BindOptions has no field or method ReadOnlyForceRecursive)
+../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/mount.go:135:20: volumeOptions().Subpath undefined (type *mount.VolumeOptions has no field or method Subpath)
+../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/mount.go:186:24: mount.BindOptions.ReadOnlyNonRecursive undefined (type *mount.BindOptions has no field or method ReadOnlyNonRecursive)
+../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/mount.go:191:24: mount.BindOptions.ReadOnlyForceRecursive undefined (type *mount.BindOptions has no field or method ReadOnlyForceRecursive)
+../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/parse.go:95:21: undefined: container.RestartPolicyMode                                                                                                                                                           ../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/ulimit.go:20:32: too many errors                                                                                                                                                                                 
+```
+
+Great! Now what!?
+
+go get -u sigs.k8s.io/controller-runtime@v0.14.6
+this downgrades 
+go: downgraded github.com/aws/amazon-vpc-cni-k8s v1.19.3 => v1.15.4
+go: downgraded github.com/aws/amazon-vpc-resource-controller-k8s v1.5.0 => v1.3.0
+
+so let's use 
+sigs.k8s.io/controller-runtime v0.19.1
+
+

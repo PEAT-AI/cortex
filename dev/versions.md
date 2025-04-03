@@ -150,7 +150,7 @@ see https://github.com/moby/moby/issues/39302#issuecomment-639687466_
 1. `go get github.com/aws/amazon-vpc-cni-k8s/pkg/awsutils@v1.19.3`
 1. `go get github.com/PEAT-AI/yaml@31e52ba8433b683c471ef92cf1711fe67671dac5`
 1. `go get github.com/cortexlabs/go-input@8b67a7a7b28d1c45f5c588171b3b50148462b247`
-1. `go get github.com/xlab/treeprint@v1.1.0`
+1. `go get github.com/xlab/treeprint@v1.2.0`
 1. `go get -u sigs.k8s.io/controller-runtime@v0.14.6`
 1. `echo -e '\nreplace github.com/docker/docker => github.com/docker/engine v19.03.13' >> go.mod`
 1. `go get -u github.com/docker/distribution`
