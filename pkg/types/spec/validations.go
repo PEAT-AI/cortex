@@ -37,7 +37,7 @@ import (
 	libtime "github.com/cortexlabs/cortex/pkg/lib/time"
 	"github.com/cortexlabs/cortex/pkg/lib/urls"
 	"github.com/cortexlabs/cortex/pkg/types/userconfig"
-	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/registry"
 	kresource "k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -972,9 +972,9 @@ func getDockerAuthStrFromK8s(dockerClient *docker.Client, k8sClient *k8s.Client)
 		return "", ErrorUnexpectedDockerSecretData("should contain a single set of credentials", secretData)
 	}
 
-	var dockerAuth dockertypes.AuthConfig
+	var dockerAuth registry.AuthConfig
 	for registryAddress, creds := range authSecret.Auths {
-		dockerAuth = dockertypes.AuthConfig{
+		dockerAuth = registry.AuthConfig{
 			Username:      creds.Username,
 			Password:      creds.Password,
 			ServerAddress: registryAddress,
