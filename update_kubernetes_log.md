@@ -167,14 +167,8 @@ We get lots of errors like this:
 ../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/parse.go:95:21: undefined: container.RestartPolicyMode                                                                                                                                                           ../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/ulimit.go:20:32: too many errors                                                                                                                                                                                 
 ```
 
-Great! Now what!?
 
-go get -u sigs.k8s.io/controller-runtime@v0.14.6
-this downgrades 
-go: downgraded github.com/aws/amazon-vpc-cni-k8s v1.19.3 => v1.15.4
-go: downgraded github.com/aws/amazon-vpc-resource-controller-k8s v1.5.0 => v1.3.0
-
-so let's use 
-sigs.k8s.io/controller-runtime v0.19.1
+messed around a lot with different docker versions and upgraded everything to almost newest versions if possible.
+I tried first to pin some stuff to older versions, but that was not going so well.
 
 
