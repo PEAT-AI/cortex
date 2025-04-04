@@ -171,4 +171,7 @@ We get lots of errors like this:
 messed around a lot with different docker versions and upgraded everything to almost newest versions if possible.
 I tried first to pin some stuff to older versions, but that was not going so well.
 
-
+---
+## build images
+source envs.sh
+make images-all-skip-push
