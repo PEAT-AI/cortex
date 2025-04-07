@@ -209,3 +209,54 @@ make: *** [Makefile:21: setup-cluster] Error 1
 update istio
 newest ver is 1.25.1
 follow steps in versions.md
+
+
+Warning  FailedMount  83s (x13 over 11m)  kubelet            MountVolume.SetUp failed for volume "istiod-ca-cert" : configmap "istio-ca-root-cert" not found
+
+## Resolving Istio and Metrics-Server Issues
+
+After upgrading to Kubernetes 1.31 and Istio 1.25.1, we encountered two critical issues that prevented the cluster from starting properly:
+
+### Issue 1: Istio Certificate Distribution Failure
+
+**Problem**: 
+Ingress gateways failed to start with errors about missing certificates:
+- `MountVolume.SetUp failed for volume "istiod-ca-cert" : configmap "istio-ca-root-cert" not found`
+- Later: `failed to sign CSR: create certificate: rpc error: code = Unavailable desc = connection error: desc = "transport: authentication handshake failed: tls: failed to verify certificate: x509: certificate signed by unknown authority"`
+
+**Root Cause**:
+Beginning with Istio 1.22, a feature called `ENHANCED_RESOURCE_SCOPING` was enabled by default. This feature changes how Istio distributes configurations and certificates. With this enabled, Istio only processes resources and distributes certificates to namespaces that match the `meshConfig.discoverySelectors` criteria. In our case, the selector was set to only include namespaces with the label `istio-discovery: enabled`.
+
+The `istio-system` namespace, which contains the ingress gateways, was not being labeled correctly, and even worse, the script was trying to patch the namespace before it was created.
+
+**Fix**:
+1. Modified `setup_namespaces()` in `install.sh` to create the `istio-system` namespace early in the deployment process
+2. Added the `istio-discovery: enabled` label to the `istio-system` namespace to ensure certificates are distributed to it
+
+The fix allows Istio's certificate authority to correctly distribute certificates to the ingress gateways, enabling them to establish secure connections.
+
+### Issue 2: Metrics-Server Conflicts
+
+**Problem**:
+After fixing the Istio issue, we encountered errors with metrics-server installation:
+- `spec.template.spec.containers[0].ports[1].name: Duplicate value: "https"`
+- `spec.selector: Invalid value: ... field is immutable`
+
+**Root Cause**:
+EKS now automatically installs its own metrics-server as part of the cluster creation. When Cortex tried to install its own version, it conflicted with the EKS-managed version, particularly with immutable fields.
+
+**Fix**:
+1. Modified `install.sh` to delete the existing metrics API service registration before applying Cortex's metrics-server
+2. Applied Cortex's complete metrics-server manifest to ensure consistency with the rest of the system
+
+This approach ensures Cortex uses its own metrics-server configuration, which may contain customizations important for proper system functioning.
+
+### Lessons Learned
+
+1. **Istio Changes Between Versions**: Major version upgrades of Istio (1.17 to 1.25) can introduce significant architectural changes that affect certificate distribution and security. Always check the upgrade notes carefully.
+
+2. **EKS Addon Management**: Newer EKS versions manage more components as built-in addons. When upgrading, we need to be careful about conflicts between EKS-managed and application-managed components.
+
+3. **Namespace Scoping**: Modern Kubernetes security practices are moving toward more explicit scoping of permissions and configurations. This is a good practice but requires more explicit configuration during installation.
+
+The fixes we've implemented ensure compatibility with newer Kubernetes and Istio versions while maintaining Cortex's specific configuration requirements.
