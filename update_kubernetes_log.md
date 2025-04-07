@@ -173,5 +173,39 @@ I tried first to pin some stuff to older versions, but that was not going so wel
 
 ---
 ## build images
+change tag from master to 0.44.0, search & replace everywhere in butterfly
 source envs.sh
 make images-all-skip-push
+make cli
+copy cortex binary to butterfly/cortex
+
+## butterfly
+spin up butterfly-dev cluster with makefile
+
+observe this:
+2025-04-07 18:23:05 [!]  recommended policies were found for "vpc-cni" addon, but since OIDC is disabled on the cluster, eksctl cannot configure the requested permissions; the recommended way to provide IAM permissions for "vpc-cni" addon is via pod identity associations; after addon creation is completed, add all recommended policies to the config file, under `addon.PodIdentityAssociations`, and run `eksctl update addon`
+
+ignore for now
+
+istio seems to old. we need to update it.
+WARNING: Istio 1.23.0 may be out of support (EOL) already: see https://istio.io/latest/docs/releases/supported-releases/ for supported releases
+
+- Processing resources for Istio core.
+✔ Istio core installed ⛵️
+- Processing resources for Istiod.
+- Processing resources for Istiod. Waiting for Deployment/istio-system/istiod
+✔ Istiod installed 🧠
+- Processing resources for Ingress gateways.
+- Processing resources for Ingress gateways. Waiting for Deployment/istio-system/ingressgateway-apis, Deployment/istio-system/ingressgateway-operator
+✘ Ingress gateways encountered an error: failed to wait for resource: resources not ready after 5m0s: context deadline exceeded
+  Deployment/istio-system/ingressgateway-apis (container failed to start: ContainerCreating: )
+  Deployment/istio-system/ingressgateway-operator (container failed to start: ContainerCreating: )
+- Pruning removed resourcesError: failed to install manifests: errors occurred during operation
+
+please run `cortex cluster down` to delete the cluster before trying to create this cluster again
+make: *** [Makefile:21: setup-cluster] Error 1
+
+---
+update istio
+newest ver is 1.25.1
+follow steps in versions.md

@@ -37,8 +37,8 @@ require (
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c
 	go.uber.org/atomic v1.11.0
 	go.uber.org/zap v1.27.0
-	istio.io/api v1.23.5
-	istio.io/client-go v1.23.5
+	istio.io/api v1.25.1
+	istio.io/client-go v1.25.1
 	k8s.io/api v0.32.3
 	k8s.io/apimachinery v0.32.3
 	k8s.io/client-go v0.32.3
