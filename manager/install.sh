@@ -209,8 +209,13 @@ function write_kubeconfig() {
 }
 
 function setup_namespaces() {
+  # Ensure istio-system namespace exists before patching
+  kubectl create namespace istio-system --dry-run=client -o yaml | kubectl apply -f -
+
   # doing a patch to prevent getting the kubectl.kubernetes.io/last-applied-configuration annotation warning
   kubectl patch namespace default -p '{"metadata": {"labels": {"istio-discovery": "enabled"}}}' >/dev/null
+  # Also label the istio-system namespace for discovery
+  kubectl patch namespace istio-system -p '{"metadata": {"labels": {"istio-discovery": "enabled"}}}' >/dev/null
   kubectl apply -f manifests/namespaces.yaml >/dev/null
 }
 
