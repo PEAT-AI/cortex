@@ -67,7 +67,18 @@ function cluster_up() {
   echo "✓"
 
   echo -n "￮ configuring metrics "
-  envsubst < manifests/metrics-server.yaml | kubectl apply -f - >/dev/null
+  # Check if metrics-server is already installed by EKS
+  if kubectl get deployment metrics-server -n kube-system >/dev/null 2>&1; then
+    echo "EKS metrics-server found, overriding with Cortex version..."
+    # Delete existing metrics-server but keep the API service and RBAC resources
+    kubectl delete deployment metrics-server -n kube-system --ignore-not-found=true >/dev/null 2>&1
+    kubectl delete service metrics-server -n kube-system --ignore-not-found=true >/dev/null 2>&1
+    # Apply only the Deployment and Service portion from our manifest
+    kubectl apply -f <(envsubst < manifests/metrics-server.yaml | grep -A1000 -m1 "kind: Service" | grep -B1000 "kind: APIService" | grep -v "kind: APIService") >/dev/null 2>&1
+  else
+    # Apply the full manifest if metrics-server is not installed
+    envsubst < manifests/metrics-server.yaml | kubectl apply -f - >/dev/null
+  fi
   setup_prometheus
   setup_grafana
   echo "✓"
