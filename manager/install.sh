@@ -67,10 +67,29 @@ function cluster_up() {
   echo "✓"
 
   echo -n "￮ configuring metrics "
-  # Delete the existing metrics API registration if it exists (needed to ensure a clean install)
-  kubectl delete apiservice v1beta1.metrics.k8s.io --ignore-not-found=true >/dev/null 2>&1
+  # Simplify the metrics-server installation with better error handling
+  if kubectl get deployment metrics-server -n kube-system >/dev/null 2>&1; then
+    echo "EKS metrics-server found, removing it before installing Cortex version..."
+    # Delete the EKS version (deployment, service and API service)
+    kubectl delete deployment metrics-server -n kube-system --ignore-not-found=true
+    kubectl delete service metrics-server -n kube-system --ignore-not-found=true
+    kubectl delete apiservice v1beta1.metrics.k8s.io --ignore-not-found=true
+    # Wait a bit for resources to be fully deleted
+    sleep 5
+  fi
+  
+  # Delete the API service again to be sure (sometimes it can get stuck)
+  kubectl delete apiservice v1beta1.metrics.k8s.io --ignore-not-found=true
+  
+  # Check if CORTEX_IMAGE_METRICS_SERVER is set
+  if [ -z "$CORTEX_IMAGE_METRICS_SERVER" ]; then
+    echo "Warning: CORTEX_IMAGE_METRICS_SERVER not set, using a default value"
+    export CORTEX_IMAGE_METRICS_SERVER="970653281915.dkr.ecr.ap-south-1.amazonaws.com/cortexlabs/metrics-server:0.44.0"
+  fi
+  
   # Apply the full metrics-server manifest
-  envsubst < manifests/metrics-server.yaml | kubectl apply -f - >/dev/null
+  envsubst < manifests/metrics-server.yaml | kubectl apply -f -
+  
   setup_prometheus
   setup_grafana
   echo "✓"
