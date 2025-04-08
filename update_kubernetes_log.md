@@ -246,7 +246,7 @@ After fixing the Istio issue, we encountered errors with metrics-server installa
 EKS now automatically installs its own metrics-server as part of the cluster creation. When Cortex tried to install its own version, it conflicted with the EKS-managed version, particularly with immutable fields.
 
 **Fix**:
-1. Modified `install.sh` to delete the existing metrics API service registration before applying Cortex's metrics-server
+1. Modified `install.sh` to delete the existing metrics API service registration before applying Cortex's version
 2. Applied Cortex's complete metrics-server manifest to ensure consistency with the rest of the system
 
 This approach ensures Cortex uses its own metrics-server configuration, which may contain customizations important for proper system functioning.
@@ -260,3 +260,29 @@ This approach ensures Cortex uses its own metrics-server configuration, which ma
 3. **Namespace Scoping**: Modern Kubernetes security practices are moving toward more explicit scoping of permissions and configurations. This is a good practice but requires more explicit configuration during installation.
 
 The fixes we've implemented ensure compatibility with newer Kubernetes and Istio versions while maintaining Cortex's specific configuration requirements.
+
+## Further Refinements to Metrics-Server Installation
+
+After our initial fix for the metrics-server conflict, we encountered additional issues with the installation process. The metrics-server was being detected but not properly replaced, resulting in an error during cluster creation:
+
+```
+￮ configuring metrics EKS metrics-server found, overriding with Cortex version...
+please run `cortex cluster down` to delete the cluster before trying to create this cluster again
+```
+
+**Additional Fixes:**
+
+1. **More thorough cleanup**: Updated the script to explicitly delete all components of the EKS metrics-server (deployment, service, and API service) before installing Cortex's version.
+
+2. **Added a delay after deletion**: Added a 5-second pause after deleting resources to ensure they're fully removed before proceeding with the installation.
+
+3. **Environment variable safeguard**: Added a check for the `CORTEX_IMAGE_METRICS_SERVER` environment variable and set a default value if missing, ensuring the image reference is always available.
+
+4. **Improved error visibility**: Removed output redirection to better identify any installation problems.
+
+The updated approach is more robust, handling edge cases that were causing failures in our previous attempt. This fix ensures that Cortex's custom metrics-server is properly installed even when EKS has pre-installed its own version.
+
+--- cluster is running now, though with some warnings which we happily ignore.
+
+
+
