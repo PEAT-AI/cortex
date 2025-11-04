@@ -146,7 +146,7 @@ see https://github.com/moby/moby/issues/39302#issuecomment-639687466_
 
 1. `rm -rf go.mod go.sum && go mod init github.com/cortexlabs/cortex && go clean -modcache`
 1. `go get k8s.io/client-go@v0.31.0 && go get k8s.io/apimachinery@v0.31.0 && go get k8s.io/api@v0.31.0`
-1. `go get istio.io/client-go@v1.25.1 && go get istio.io/api@1.25.1`
+1. `go get istio.io/client-go@v1.27.3 && go get istio.io/api@1.27.3`
 1. `go get github.com/aws/amazon-vpc-cni-k8s/pkg/awsutils@v1.19.3`
 1. `go get github.com/PEAT-AI/yaml@31e52ba8433b683c471ef92cf1711fe67671dac5`
 1. `go get github.com/cortexlabs/go-input@8b67a7a7b28d1c45f5c588171b3b50148462b247`
