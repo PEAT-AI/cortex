@@ -32,15 +32,17 @@
    - New AL2023: `amazon-eks-node-al2023-x86_64-nvidia-{version}-v*` (GPU - available since October 2024)
    - Note: AL2023 has separate AMI variants for NVIDIA GPU vs AWS Neuron (unlike AL2 which had one unified GPU AMI)
 
-3. **Bootstrap Configuration**: Completely replaced AL2's bootstrap approach with AL2023's NodeConfig format:
+3. **Bootstrap Configuration**: Updated for AL2023's NodeConfig format:
    - **Removed** (don't work with AL2023):
      - `kubeletExtraConfig`
-     - `preBootstrapCommands`
      - `overrideBootstrapCommand` with `/etc/eks/bootstrap.sh`
-   - **Added**: MIME multipart document with:
-     - Shell script to install ipvsadm and load IPVS kernel modules
-     - NodeConfig YAML for kubelet configuration (kubeReserved, systemReserved, evictionHard, etc.)
-     - eksctl automatically injects cluster metadata (API endpoint, CA, service CIDR)
+   - **Changed**:
+     - `preBootstrapCommands`: Now works with AL2023 (re-enabled in eksctl PR #8031, Dec 2024)
+     - `overrideBootstrapCommand`: Now contains plain NodeConfig YAML (no MIME multipart needed)
+   - **How it works**:
+     - preBootstrapCommands runs shell scripts before nodeadm (for IPVS module loading)
+     - overrideBootstrapCommand provides NodeConfig YAML for kubelet configuration
+     - eksctl handles wrapping and cluster metadata injection automatically
 
 4. **Kernel Module Changes**: Updated module name for AL2023's newer kernel:
    - Old: `nf_conntrack_ipv4`
@@ -48,7 +50,9 @@
 
 ### Requirements
 
-- **eksctl**: Version 0.176.0+ required for AL2023 support (current: v0.206.0 ✓)
+- **eksctl**: Version 0.216.0+ required for AL2023 preBootstrapCommands support (PR #8031)
+  - Previous version requirement: 0.176.0+ for basic AL2023 support
+  - Current in codebase: v0.216.0 ✓
 - **VPC CNI**: Version 1.16.2+ required for AL2023 (current: 1.20.3 ✓)
 
 ### Testing Considerations

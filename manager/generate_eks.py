@@ -61,29 +61,19 @@ def default_nodegroup(cluster_config):
             + cluster_config.get("iam_policy_arns", []),
         },
         "privateNetworking": cluster_config.get("subnet_visibility", "public") != "public",
-        # AL2023 uses NodeConfig YAML format instead of kubeletExtraConfig and preBootstrapCommands
-        # Using MIME multipart document to include both shell script (for IPVS modules) and NodeConfig
+        # AL2023 supports preBootstrapCommands (re-enabled in eksctl PR #8031, Dec 2024)
+        "preBootstrapCommands": [
+            "yum install -y ipvsadm",
+            "modprobe ip_vs",  # IP virtual server
+            "modprobe ip_vs_rr",  # round robin load balancer
+            "modprobe ip_vs_lc",  # least connected load balancer
+            "modprobe ip_vs_wrr",  # weighted round robin load balancer
+            "modprobe ip_vs_sh",  # source-hashing load balancer
+            "modprobe nf_conntrack",  # AL2023 uses nf_conntrack instead of nf_conntrack_ipv4
+        ],
+        # AL2023 uses NodeConfig YAML format in overrideBootstrapCommand
         "overrideBootstrapCommand": "\n".join(
             [
-                "MIME-Version: 1.0",
-                'Content-Type: multipart/mixed; boundary="==CORTEX_BOUNDARY=="',
-                "",
-                "--==CORTEX_BOUNDARY==",
-                'Content-Type: text/x-shellscript; charset="us-ascii"',
-                "",
-                "#!/bin/bash",
-                "# Install ipvsadm and load IPVS kernel modules for kube-proxy IPVS mode",
-                "yum install -y ipvsadm",
-                "modprobe ip_vs",
-                "modprobe ip_vs_rr",
-                "modprobe ip_vs_lc",
-                "modprobe ip_vs_wrr",
-                "modprobe ip_vs_sh",
-                "modprobe nf_conntrack",  # AL2023 uses nf_conntrack instead of nf_conntrack_ipv4
-                "",
-                "--==CORTEX_BOUNDARY==",
-                'Content-Type: application/node.eks.aws',
-                "",
                 "apiVersion: node.eks.aws/v1alpha1",
                 "kind: NodeConfig",
                 "spec:",
@@ -105,7 +95,6 @@ def default_nodegroup(cluster_config):
                 "    flags:",
                 '      - "--node-labels={{.NodeLabels}}"',
                 '      - "--register-with-taints={{.NodeTaints}}"',
-                "--==CORTEX_BOUNDARY==--",
             ]
         ),
     }
