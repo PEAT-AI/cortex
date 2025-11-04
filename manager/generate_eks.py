@@ -19,7 +19,7 @@ from collections import namedtuple
 import click
 import yaml
 
-K8S_VERSION = "1.31"
+K8S_VERSION = "1.34"
 AMI_FAMILY = "AmazonLinux2"
 
 ParsedInstanceType = namedtuple(
@@ -406,7 +406,7 @@ def generate_eks(
         "addons": [
             {
                 "name": "vpc-cni",
-                "version": "1.19.2",
+                "version": "1.20.3",
             },
         ],
     }
