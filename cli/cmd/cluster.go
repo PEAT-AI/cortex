@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -1458,7 +1459,7 @@ func getClusterRESTConfig(awsClient *awslib.Client, clusterName string) (*rest.C
 		ClusterID: aws.StringValue(clusterOutput.Cluster.Name),
 	}
 
-	tok, err := gen.GetWithOptions(opts)
+	tok, err := gen.GetWithOptions(context.TODO(), opts)
 	if err != nil {
 		return nil, err
 	}
