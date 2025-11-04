@@ -20,7 +20,7 @@ import click
 import yaml
 
 K8S_VERSION = "1.34"
-AMI_FAMILY = "AmazonLinux2"
+AMI_FAMILY = "AmazonLinux2023"
 
 ParsedInstanceType = namedtuple(
     "ParsedInstanceType", ["family", "generation", "capabilities", "size"]
@@ -61,27 +61,51 @@ def default_nodegroup(cluster_config):
             + cluster_config.get("iam_policy_arns", []),
         },
         "privateNetworking": cluster_config.get("subnet_visibility", "public") != "public",
-        "kubeletExtraConfig": {
-            "kubeReserved": {"cpu": "150m", "memory": "300Mi", "ephemeral-storage": "1Gi"},
-            "kubeReservedCgroup": "/kube-reserved",
-            "systemReserved": {"cpu": "150m", "memory": "300Mi", "ephemeral-storage": "1Gi"},
-            "evictionHard": {"memory.available": "200Mi", "nodefs.available": "5%"},
-            "registryPullQPS": 10,
-        },
-        "preBootstrapCommands": [
-            "sudo yum install -y ipvsadm",
-            "sudo modprobe ip_vs",  # IP virtual server
-            "sudo modprobe ip_vs_rr",  # round robing load balancer
-            "sudo modprobe ip_vs_lc",  # least connected load balancer
-            "sudo modprobe ip_vs_wrr",  # weighted round robin load balancer
-            "sudo modprobe ip_vs_sh",  # source-hashing load balancer
-            "sudo modprobe nf_conntrack_ipv4",
-        ],
+        # AL2023 uses NodeConfig YAML format instead of kubeletExtraConfig and preBootstrapCommands
+        # Using MIME multipart document to include both shell script (for IPVS modules) and NodeConfig
         "overrideBootstrapCommand": "\n".join(
             [
+                "MIME-Version: 1.0",
+                'Content-Type: multipart/mixed; boundary="==CORTEX_BOUNDARY=="',
+                "",
+                "--==CORTEX_BOUNDARY==",
+                'Content-Type: text/x-shellscript; charset="us-ascii"',
+                "",
                 "#!/bin/bash",
-                "source /var/lib/cloud/scripts/eksctl/bootstrap.helper.sh",
-                f"/etc/eks/bootstrap.sh {cluster_config['cluster_name']} --container-runtime containerd --kubelet-extra-args \"--node-labels=${{NODE_LABELS}} --register-with-taints=${{NODE_TAINTS}}\"",
+                "# Install ipvsadm and load IPVS kernel modules for kube-proxy IPVS mode",
+                "yum install -y ipvsadm",
+                "modprobe ip_vs",
+                "modprobe ip_vs_rr",
+                "modprobe ip_vs_lc",
+                "modprobe ip_vs_wrr",
+                "modprobe ip_vs_sh",
+                "modprobe nf_conntrack",  # AL2023 uses nf_conntrack instead of nf_conntrack_ipv4
+                "",
+                "--==CORTEX_BOUNDARY==",
+                'Content-Type: application/node.eks.aws',
+                "",
+                "apiVersion: node.eks.aws/v1alpha1",
+                "kind: NodeConfig",
+                "spec:",
+                "  kubelet:",
+                "    config:",
+                "      kubeReserved:",
+                '        cpu: "150m"',
+                '        memory: "300Mi"',
+                '        ephemeral-storage: "1Gi"',
+                '      kubeReservedCgroup: "/kube-reserved"',
+                "      systemReserved:",
+                '        cpu: "150m"',
+                '        memory: "300Mi"',
+                '        ephemeral-storage: "1Gi"',
+                "      evictionHard:",
+                '        memory.available: "200Mi"',
+                '        nodefs.available: "5%"',
+                "      registryPullQPS: 10",
+                "    flags:",
+                '      - "--node-labels={{.NodeLabels}}"',
+                '      - "--register-with-taints={{.NodeTaints}}"',
+                "--==CORTEX_BOUNDARY==--",
             ]
         ),
     }

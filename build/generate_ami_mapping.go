@@ -235,15 +235,18 @@ func main() {
 		fmt.Print(region)
 		sess := session.New(&aws.Config{Region: aws.String(region)})
 		svc := ec2.New(sess)
-		cpuAmd64AMI, err := FindImage(svc, EKSResourceAccountID(region), fmt.Sprintf("amazon-eks-node-%s-v*", k8sVersion))
+		// AL2023 AMI naming pattern: amazon-eks-node-al2023-{arch}-{type}-{version}-v*
+		// Types: standard (CPU), nvidia (GPU), neuron (Inferentia)
+		cpuAmd64AMI, err := FindImage(svc, EKSResourceAccountID(region), fmt.Sprintf("amazon-eks-node-al2023-x86_64-standard-%s-v*", k8sVersion))
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-		cpuArm64AMI, err := FindImage(svc, EKSResourceAccountID(region), fmt.Sprintf("amazon-eks-arm64-node-%s-v*", k8sVersion))
+		cpuArm64AMI, err := FindImage(svc, EKSResourceAccountID(region), fmt.Sprintf("amazon-eks-node-al2023-arm64-standard-%s-v*", k8sVersion))
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-		acceleratedAmd64AMI, err := FindImage(svc, EKSResourceAccountID(region), fmt.Sprintf("amazon-eks-gpu-node-%s-v*", k8sVersion))
+		// AL2023 GPU AMIs available since October 2024
+		acceleratedAmd64AMI, err := FindImage(svc, EKSResourceAccountID(region), fmt.Sprintf("amazon-eks-node-al2023-x86_64-nvidia-%s-v*", k8sVersion))
 		if err != nil {
 			log.Fatal(err.Error())
 		}
