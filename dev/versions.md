@@ -145,16 +145,22 @@ see https://github.com/moby/moby/issues/39302#issuecomment-639687466_
 ### Non-versioned modules
 
 1. `rm -rf go.mod go.sum && go mod init github.com/cortexlabs/cortex && go clean -modcache`
-1. `go get k8s.io/client-go@v0.31.0 && go get k8s.io/apimachinery@v0.31.0 && go get k8s.io/api@v0.31.0`
+1. `go get k8s.io/client-go@v0.34.0 && go get k8s.io/apimachinery@v0.34.0 && go get k8s.io/api@v0.34.0 && go get k8s.io/metrics@v0.34.0`
 1. `go get istio.io/client-go@v1.27.3 && go get istio.io/api@1.27.3`
-1. `go get github.com/aws/amazon-vpc-cni-k8s/pkg/awsutils@v1.19.3`
-1. `go get github.com/PEAT-AI/yaml@31e52ba8433b683c471ef92cf1711fe67671dac5`
+1. `go get github.com/aws/amazon-vpc-cni-k8s/pkg/awsutils@v1.20.3`
+1. `go get github.com/PEAT-AI/yaml@9ef823ab7fd0`
 1. `go get github.com/cortexlabs/go-input@8b67a7a7b28d1c45f5c588171b3b50148462b247`
 1. `go get github.com/xlab/treeprint@v1.2.0`
-1. `go get -u sigs.k8s.io/controller-runtime@v0.14.6`
-1. `echo -e '\nreplace github.com/docker/docker => github.com/docker/engine v19.03.13' >> go.mod`
+1. `go get sigs.k8s.io/aws-iam-authenticator@v0.7.8 && go get sigs.k8s.io/controller-runtime@v0.22.4`
+   - Note: controller-runtime version must match k8s version (v0.22.x for k8s 1.34, v0.21.x for k8s 1.33, v0.20.x for k8s 1.32, etc.)
+   - Note: aws-iam-authenticator v0.7.x has breaking API change: `GetWithOptions(opts)` becomes `GetWithOptions(context.TODO(), opts)`. Update any calls in `cli/cmd/cluster.go` and add `"context"` import if needed.
+1. `go get github.com/docker/docker@v27.1.1+incompatible`
+   - Note: No replace directive needed for modern docker versions
 1. `go get -u github.com/docker/distribution`
 1. `go mod tidy`
+1. Test compilation with `go build ./...`
+   - If you get errors about `sentry.Logger.SetOutput`, downgrade sentry-go: `go get github.com/getsentry/sentry-go@v0.31.1 && go mod tidy`
+   - The v0.36.x versions have breaking API changes
 1. Potentially skip these steps
    1. For every non-indirect, non-hardcoded dependency in go.mod, update with `go get -u <path>`
    1. `go mod tidy`
