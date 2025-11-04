@@ -38,11 +38,12 @@
      - `overrideBootstrapCommand` with `/etc/eks/bootstrap.sh`
    - **Changed**:
      - `preBootstrapCommands`: Now works with AL2023 (re-enabled in eksctl PR #8031, Dec 2024)
-     - `overrideBootstrapCommand`: Now contains plain NodeConfig YAML (no MIME multipart needed)
+     - `overrideBootstrapCommand`: Now contains plain NodeConfig YAML
+     - Custom AMI + overrideBootstrapCommand: Now supported together (eksctl PR #8078, Dec 2024)
    - **How it works**:
      - preBootstrapCommands runs shell scripts before nodeadm (for IPVS module loading)
      - overrideBootstrapCommand provides NodeConfig YAML for kubelet configuration
-     - eksctl handles wrapping and cluster metadata injection automatically
+     - eksctl handles MIME multipart wrapping and cluster metadata injection automatically
 
 4. **Kernel Module Changes**: Updated module name for AL2023's newer kernel:
    - Old: `nf_conntrack_ipv4`
@@ -50,8 +51,10 @@
 
 ### Requirements
 
-- **eksctl**: Version 0.216.0+ required for AL2023 preBootstrapCommands support (PR #8031)
-  - Previous version requirement: 0.176.0+ for basic AL2023 support
+- **eksctl**: Version 0.199.0+ required for AL2023 full support
+  - v0.176.0+: Basic AL2023 support
+  - v0.199.0+: overrideBootstrapCommand with custom AMI (PR #8078, Dec 10, 2024)
+  - v0.216.0+: preBootstrapCommands support (PR #8031, Dec 2024)
   - Current in codebase: v0.216.0 ✓
 - **VPC CNI**: Version 1.16.2+ required for AL2023 (current: 1.20.3 ✓)
 
@@ -78,8 +81,14 @@
 
 **If nodes fail to join cluster:**
 - Check cloud-init logs: `sudo cat /var/log/cloud-init-output.log`
+- Check nodeadm logs: `sudo journalctl -u nodeadm-config -u nodeadm-run`
 - Verify nodeadm configuration: `sudo cat /etc/nodeadm/config.yaml` (if it exists)
 - Check kubelet logs: `sudo journalctl -u kubelet`
+
+**Common Issue - Template Variables in overrideBootstrapCommand:**
+- Don't use eksctl template variables like `{{.NodeLabels}}` or `{{.NodeTaints}}` in overrideBootstrapCommand
+- These don't get substituted and will cause nodeadm to fail when merging configs
+- eksctl automatically generates proper flags in the first NodeConfig - let it handle node labels/taints
 
 **If IPVS mode doesn't work:**
 - Verify modules are loaded: `lsmod | grep ip_vs`

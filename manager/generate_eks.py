@@ -72,6 +72,9 @@ def default_nodegroup(cluster_config):
             "modprobe nf_conntrack",  # AL2023 uses nf_conntrack instead of nf_conntrack_ipv4
         ],
         # AL2023 uses NodeConfig YAML format in overrideBootstrapCommand
+        # NOTE: Don't include 'flags' with template variables - eksctl generates those
+        # automatically in the first NodeConfig. Template variables like {{.NodeLabels}}
+        # don't get substituted in overrideBootstrapCommand and will cause nodeadm to fail.
         "overrideBootstrapCommand": "\n".join(
             [
                 "apiVersion: node.eks.aws/v1alpha1",
@@ -92,9 +95,6 @@ def default_nodegroup(cluster_config):
                 '        memory.available: "200Mi"',
                 '        nodefs.available: "5%"',
                 "      registryPullQPS: 10",
-                "    flags:",
-                '      - "--node-labels={{.NodeLabels}}"',
-                '      - "--register-with-taints={{.NodeTaints}}"',
             ]
         ),
     }
