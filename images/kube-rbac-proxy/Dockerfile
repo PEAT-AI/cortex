@@ -16,7 +16,7 @@
 
 ARG TARGETARCH, TARGETOS
 
-FROM golang:1.24.0 AS builder
+FROM golang:1.25.3 as builder
 RUN git clone -b v0.14.1 --depth 1 https://github.com/brancz/kube-rbac-proxy /go/src/github.com/brancz/kube-rbac-proxy
 WORKDIR /go/src/github.com/brancz/kube-rbac-proxy/cmd/kube-rbac-proxy
 RUN go mod download

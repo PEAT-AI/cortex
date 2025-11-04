@@ -14,7 +14,7 @@
 
 ARG TARGETARCH, TARGETOS
 
-FROM golang:1.24.0 as builder
+FROM golang:1.25.3 as builder
 
 WORKDIR /workspace
 COPY go.mod go.mod

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.24.0 as builder
+FROM golang:1.25.3 as builder
 
 RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.34.0/bin/linux/amd64/kubectl && \
     mv ./kubectl /tmp/kubectl

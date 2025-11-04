@@ -16,7 +16,7 @@
 
 ARG TARGETARCH, TARGETOS
 
-FROM golang:1.24.0 AS builder
+FROM golang:1.25.3 as builder
 
 RUN mkdir /tmp/kubexit
 RUN git clone -b v0.1.0-cortex --depth 1  https://github.com/cortexlabs/kubexit.git /tmp/kubexit
