@@ -323,10 +323,9 @@ func TestAutoscaler_MinReplicas(t *testing.T) {
 	log := newLogger(t)
 
 	mux := sync.RWMutex{}
-	var latestRequest int32
-
 	minReplicas := int32(5)
 	maxReplicas := int32(10)
+	latestRequest := minReplicas + 1 // Initialize to current replicas to avoid checking initial zero value
 
 	scalerMock := &ScalerFunc{
 		ScaleFunc: func(apiName string, request int32) error {
