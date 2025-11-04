@@ -463,5 +463,92 @@
 			"cpu_amd64": "ami-0a3bc55cf89c55f96",
 			"cpu_arm64": "ami-0078f22a1d1069db9"
 		}
+	},
+	"1.34": {
+		"ap-northeast-1": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"ap-northeast-2": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"ap-northeast-3": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"ap-south-1": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"ap-southeast-1": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"ap-southeast-2": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"ca-central-1": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"eu-central-1": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"eu-north-1": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"eu-west-1": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"eu-west-2": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"eu-west-3": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"sa-east-1": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"us-east-1": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"us-east-2": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"us-west-1": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		},
+		"us-west-2": {
+			"accelerated_amd64": "",
+			"cpu_amd64": "",
+			"cpu_arm64": ""
+		}
 	}
 }
