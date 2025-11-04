@@ -84,7 +84,7 @@ function cluster_up() {
   # Check if CORTEX_IMAGE_METRICS_SERVER is set
   if [ -z "$CORTEX_IMAGE_METRICS_SERVER" ]; then
     echo "Warning: CORTEX_IMAGE_METRICS_SERVER not set, using a default value"
-    export CORTEX_IMAGE_METRICS_SERVER="970653281915.dkr.ecr.ap-south-1.amazonaws.com/cortexlabs/metrics-server:0.44.0"
+    export CORTEX_IMAGE_METRICS_SERVER="970653281915.dkr.ecr.ap-south-1.amazonaws.com/cortexlabs/metrics-server:0.45.0"
   fi
   
   # Apply the full metrics-server manifest
