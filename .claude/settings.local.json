@@ -3,7 +3,12 @@
     "allow": [
       "Bash(go get:*)",
       "Bash(make test:*)",
-      "Bash(go test:*)"
+      "Bash(go test:*)",
+      "WebSearch",
+      "Bash(go run:*)",
+      "Bash(jq:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:awslabs.github.io)"
     ],
     "deny": [],
     "ask": []
