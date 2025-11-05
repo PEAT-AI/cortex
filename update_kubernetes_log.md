@@ -177,7 +177,7 @@ change tag from master to 0.44.0, search & replace everywhere in butterfly
 source envs.sh
 make images-all-skip-push
 make cli
-copy cortex binary to butterfly/cortex
+cp bin/cortex ~/projects/Butterfly-serving/cortex/cortex
 
 ## butterfly
 spin up butterfly-dev cluster with makefile
