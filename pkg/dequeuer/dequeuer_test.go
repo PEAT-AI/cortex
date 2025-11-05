@@ -79,10 +79,10 @@ func TestMain(m *testing.M) {
 		// Try to create a test queue to verify SQS is working
 		sess, err := session.NewSessionWithOptions(session.Options{
 			Config: aws.Config{
-				Credentials:      credentials.NewStaticCredentials("test", "test", ""),
-				Endpoint:         aws.String(localStackEndpoint),
-				Region:           aws.String(_localStackDefaultRegion),
-				DisableSSL:       aws.Bool(true),
+				Credentials: credentials.NewStaticCredentials("test", "test", ""),
+				Endpoint:    aws.String(localStackEndpoint),
+				Region:      aws.String(_localStackDefaultRegion),
+				DisableSSL:  aws.Bool(true),
 			},
 		})
 		if err != nil {

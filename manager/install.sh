@@ -77,19 +77,19 @@ function cluster_up() {
     # Wait a bit for resources to be fully deleted
     sleep 5
   fi
-  
+
   # Delete the API service again to be sure (sometimes it can get stuck)
   kubectl delete apiservice v1beta1.metrics.k8s.io --ignore-not-found=true
-  
+
   # Check if CORTEX_IMAGE_METRICS_SERVER is set
   if [ -z "$CORTEX_IMAGE_METRICS_SERVER" ]; then
     echo "Warning: CORTEX_IMAGE_METRICS_SERVER not set, using a default value"
     export CORTEX_IMAGE_METRICS_SERVER="970653281915.dkr.ecr.ap-south-1.amazonaws.com/cortexlabs/metrics-server:0.45.0"
   fi
-  
+
   # Apply the full metrics-server manifest
   envsubst < manifests/metrics-server.yaml | kubectl apply -f -
-  
+
   setup_prometheus
   setup_grafana
   echo "✓"

@@ -7,7 +7,7 @@ reinstall gcc & binutils with brew
 problems I stumbled over:
 ** glibc linker errors **
 
-I have go installed on ubuntu 
+I have go installed on ubuntu
 using these commands:
 
 mkdir -p ~/bin && \
@@ -29,10 +29,10 @@ temporary solution:
 brew unlink gcc
 brew unlink binutils
 
---- 
+---
 follow instructions in CONTRIBUTING.md
 
---- 
+---
 make test
 ran into an issue where we couldn't connect to localstack (s3). It didn't find a bucket "health".
 We changed the test so it's now testing the creation of a SQS queue.
@@ -53,11 +53,11 @@ check what we did in generate_eks.py before. Ah, we updated the
 aws-vpc-cni version to 1.12.6. What is it currently in eksctl?
 We check eksctl/pkg/addons/default/assets/aws-node.yaml of current eksctl
 and conclude it's v1.19.3.
-Let's update it in generate_eks.py.  
+Let's update it in generate_eks.py.
 
 ---
 Check if eksctl iam polices changed by comparing the previous version of the eksctl policy docs to the new version's and update `./dev/minimum_aws_policy.json` .
-We find some changes and update accordingly. 
+We find some changes and update accordingly.
 ---
 ## Kubernetes
 newest kubernetes version is 1.32.
@@ -67,7 +67,7 @@ we update ami.json by running:
 ```sh
 go run build/generate_ami_mapping.go manager/manifests/ami.json public
 ```
---- 
+---
 skip kube-proxy part for now. I think i skipped it last time as well.
 if we observe problems, this is something we can check later.
 ---
@@ -75,14 +75,14 @@ aws-iam-authenticator
 The link in versions.md is not working anymore. Let's try
 https://github.com/kubernetes-sigs/aws-iam-authenticator
 Which version is it at?
-0.6.30 (previously: 0.5.9). We update it in 
+0.6.30 (previously: 0.5.9). We update it in
 manager/Dockerfile
 ---
 kubectl
 latest stable version is 1.31.
 oh. so maybe k8s 1.32 is not stable? ok let's change it to 1.31 everywhere.
 regenerate ami and so on.
-sidenote: kubectl that was installed with brew was version 1.32. 
+sidenote: kubectl that was installed with brew was version 1.32.
 
 ## istio
 old version 1.17.2
@@ -98,10 +98,10 @@ them as they occur.
 we find the new location of the vpc ip resource limit file is
 https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/v${NEW_RELEASE}/pkg/vpc/vpc_ip_resource_limit.go
 
-But it's formatted differently, so a diff is looking not good. 
+But it's formatted differently, so a diff is looking not good.
 Also there's too many differences and we don't care for all the new instance types, so
 let's ignore this.
-We have already updated the aws cni version above. 
+We have already updated the aws cni version above.
 
 ## go
 latest version is 1.24.0 (previously: 1.20.4)
@@ -151,7 +151,7 @@ so in vscode we go in the merge conflict editor and always choose
 
 We also apply fixes to autoscaler that we have on the 27.2 branch.
 
-## 
+##
 Now we try to get the tests running:
 ```
 make test
@@ -164,7 +164,7 @@ We get lots of errors like this:
 ../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/mount.go:135:20: volumeOptions().Subpath undefined (type *mount.VolumeOptions has no field or method Subpath)
 ../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/mount.go:186:24: mount.BindOptions.ReadOnlyNonRecursive undefined (type *mount.BindOptions has no field or method ReadOnlyNonRecursive)
 ../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/mount.go:191:24: mount.BindOptions.ReadOnlyForceRecursive undefined (type *mount.BindOptions has no field or method ReadOnlyForceRecursive)
-../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/parse.go:95:21: undefined: container.RestartPolicyMode                                                                                                                                                           ../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/ulimit.go:20:32: too many errors                                                                                                                                                                                 
+../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/parse.go:95:21: undefined: container.RestartPolicyMode                                                                                                                                                           ../../go/pkg/mod/github.com/docker/cli@v27.4.1+incompatible/opts/ulimit.go:20:32: too many errors
 ```
 
 
@@ -219,7 +219,7 @@ After upgrading to Kubernetes 1.31 and Istio 1.25.1, we encountered two critical
 
 ### Issue 1: Istio Certificate Distribution Failure
 
-**Problem**: 
+**Problem**:
 Ingress gateways failed to start with errors about missing certificates:
 - `MountVolume.SetUp failed for volume "istiod-ca-cert" : configmap "istio-ca-root-cert" not found`
 - Later: `failed to sign CSR: create certificate: rpc error: code = Unavailable desc = connection error: desc = "transport: authentication handshake failed: tls: failed to verify certificate: x509: certificate signed by unknown authority"`
@@ -283,6 +283,3 @@ please run `cortex cluster down` to delete the cluster before trying to create t
 The updated approach is more robust, handling edge cases that were causing failures in our previous attempt. This fix ensures that Cortex's custom metrics-server is properly installed even when EKS has pre-installed its own version.
 
 --- cluster is running now, though with some warnings which we happily ignore.
-
-
-

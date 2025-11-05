@@ -170,7 +170,7 @@ alias cortex="$CORTEX_CLI_PATH"
 ```
 Client → Istio Gateway → VirtualService (activator) → Activator (port 8000)
   ↓
-Activator checks: ready replicas > 0? 
+Activator checks: ready replicas > 0?
   - No: call Autoscaler.Awaken() → scale to 1 → wait for ready
   - Yes: forward request
   ↓
