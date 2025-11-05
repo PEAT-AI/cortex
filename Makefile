@@ -17,6 +17,11 @@
 SHELL := /bin/bash
 export BASH_ENV=./dev/config/env.sh
 
+# Python virtual environment
+VENV := venv
+PYTHON := $(VENV)/bin/python3
+PIP := $(VENV)/bin/pip
+
 # declare all targets as phony to avoid collisions with local files or folders
 .PHONY: $(MAKECMDGOALS)
 
@@ -157,7 +162,7 @@ images-manager-skip-push:
 
 images-manager:
 	@./dev/registry.sh update-single manager
-	
+
 images-nvidia-device-plugin:
 	@./dev/registry.sh update-single nvidia-device-plugin
 
@@ -173,12 +178,14 @@ registry-clean:
 # Misc
 
 tools:
-	@go get -u -v golang.org/x/lint/golint
-	@go get -u -v github.com/kyoh86/looppointer/cmd/looppointer
-	@go get -u -v github.com/VojtechVitek/rerun/cmd/rerun
-	@go get -u -v github.com/go-delve/delve/cmd/dlv
-	@python3 -m pip install aiohttp boto3 pyyaml pydoc-markdown==3.* black==20.8b1 -U
-	@python3 -m pip install -e test/e2e
+	@go install golang.org/x/lint/golint@latest
+	@go install github.com/kyoh86/looppointer/cmd/looppointer@latest
+	@go install github.com/VojtechVitek/rerun/cmd/rerun@latest
+	@go install github.com/go-delve/delve/cmd/dlv@latest
+	@python3 -m venv $(VENV)
+	@$(PIP) install aiohttp boto3 pyyaml black==22.10.0 -U
+	@$(PIP) install -e test/e2e || true
+	@$(PIP) install pydoc-markdown==3.* || true
 
 format:
 	@./dev/format.sh

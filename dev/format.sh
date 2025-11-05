@@ -24,19 +24,25 @@ if ! command -v gofmt >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! command -v black >/dev/null 2>&1; then
-  echo "black must be installed"
+# Check for black in venv first, then system-wide
+if [ -x "$ROOT/venv/bin/black" ]; then
+  BLACK="$ROOT/venv/bin/black"
+elif command -v black >/dev/null 2>&1; then
+  BLACK="black"
+else
+  echo "black must be installed (run 'make tools')"
   exit 1
 fi
 
 gofmt -s -w "$ROOT"/cli "${ROOT}"/pkg
 
-black --quiet --line-length=100 --exclude .idea/ "$ROOT"
+"$BLACK" --quiet --line-length=100 --exclude .idea/ "$ROOT"
 
 # Trim trailing whitespace
 if [[ "$OSTYPE" == "darwin"* ]]; then
   output=$(cd "$ROOT" && find . -type f \
   ! -path "./vendor/*" \
+  ! -path "./venv/*" \
   ! -path "./bin/*" \
   ! -path "./.git/*" \
   ! -path "./.idea/*" \
@@ -46,6 +52,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 else
   output=$(cd "$ROOT" && find . -type f \
   ! -path "./vendor/*" \
+  ! -path "./venv/*" \
   ! -path "./bin/*" \
   ! -path "./.git/*" \
   ! -path "./.idea/*" \
@@ -57,6 +64,7 @@ fi
 # Add new line to end of file
 (cd "$ROOT" && find . -type f \
 ! -path "./vendor/*" \
+! -path "./venv/*" \
 ! -path "./bin/*" \
 ! -path "./.git/*" \
 ! -path "./.idea/*" \
@@ -67,6 +75,7 @@ xargs -0 -L1 bash -c 'test "$(tail -c 1 "$0")" && echo "" >> "$0"' || true)
 # Remove repeated new lines at end of file
 (cd "$ROOT" && find . -type f \
 ! -path "./vendor/*" \
+! -path "./venv/*" \
 ! -path "./bin/*" \
 ! -path "./.git/*" \
 ! -path "./.idea/*" \
@@ -77,6 +86,7 @@ xargs -0 -L1 bash -c 'test "$(tail -c 2 "$0")" || [ ! -s "$0" ] || (trimmed=$(pr
 # Remove new lines at beginning of file
 (cd "$ROOT" && find . -type f \
 ! -path "./vendor/*" \
+! -path "./venv/*" \
 ! -path "./bin/*" \
 ! -path "./.git/*" \
 ! -path "./.idea/*" \

@@ -44,9 +44,21 @@ if ! command -v gofmt >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! command -v black >/dev/null 2>&1; then
-  echo "black must be installed"
+# Check for black in venv first, then system-wide
+if [ -x "$ROOT/venv/bin/black" ]; then
+  BLACK="$ROOT/venv/bin/black"
+elif command -v black >/dev/null 2>&1; then
+  BLACK="black"
+else
+  echo "black must be installed (run 'make tools')"
   exit 1
+fi
+
+# Check for python3 in venv first, then system-wide
+if [ -x "$ROOT/venv/bin/python3" ]; then
+  PYTHON3="$ROOT/venv/bin/python3"
+else
+  PYTHON3="python3"
 fi
 
 go mod tidy
@@ -71,11 +83,11 @@ if [[ $output ]]; then
   exit 1
 fi
 
-output=$(black --quiet --diff --line-length=100 "$ROOT")
+output=$("$BLACK" --quiet --diff --line-length=100 "$ROOT")
 if [[ $output ]]; then
   echo "python files not properly formatted:"
   echo "$output"
-  black --version
+  "$BLACK" --version
   exit 1
 fi
 
@@ -141,6 +153,7 @@ fi
 # Check for trailing whitespace
 output=$(cd "$ROOT" && find . -type f \
 ! -path "./vendor/*" \
+! -path "./venv/*" \
 ! -path "**/.idea/*" \
 ! -path "**/.history/*" \
 ! -path "**/.vscode/*" \
@@ -165,6 +178,7 @@ fi
 # Check for missing new line at end of file
 output=$(cd "$ROOT" && find . -type f \
 ! -path "./vendor/*" \
+! -path "./venv/*" \
 ! -path "**/.idea/*" \
 ! -path "**/.history/*" \
 ! -path "**/.vscode/*" \
@@ -190,6 +204,7 @@ fi
 # Check for multiple new lines at end of file
 output=$(cd "$ROOT" && find . -type f \
 ! -path "./vendor/*" \
+! -path "./venv/*" \
 ! -path "**/.vscode/*" \
 ! -path "**/.idea/*" \
 ! -path "**/.history/*" \
@@ -213,6 +228,7 @@ fi
 # Check for new line(s) at beginning of file
 output=$(cd "$ROOT" && find . -type f \
 ! -path "./vendor/*" \
+! -path "./venv/*" \
 ! -path "**/.idea/*" \
 ! -path "**/.history/*" \
 ! -path "**/.vscode/*" \
@@ -236,7 +252,7 @@ if [[ $output ]]; then
 fi
 
 # Check that minimum_aws_policy.json is in-sync with docs
-output=$(python3 -c "
+output=$("$PYTHON3" -c "
 import sys
 policy=open('./dev/minimum_aws_policy.json').read()
 doc=open('./docs/clusters/management/auth.md').read()
@@ -247,7 +263,7 @@ if [[ "$output" != "True" ]]; then
 fi
 
 # Check docs links
-output=$(python3 $ROOT/dev/find_missing_docs_links.py)
+output=$("$PYTHON3" $ROOT/dev/find_missing_docs_links.py)
 if [[ $output ]]; then
   echo "docs file(s) have broken links:"
   echo "$output"
