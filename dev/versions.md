@@ -18,6 +18,93 @@
 1. Update `ami.json` (see release checklist for instructions)
 1. See instructions for upgrading the Kubernetes client below
 
+## Amazon Linux 2 to Amazon Linux 2023 Migration (Kubernetes 1.34+)
+
+**IMPORTANT:** AWS does not provide Amazon Linux 2 AMIs for Kubernetes 1.34 and later. Migration to Amazon Linux 2023 is mandatory for K8s 1.34+.
+
+### Key Changes Made
+
+1. **AMI Family**: Updated `AMI_FAMILY` from "AmazonLinux2" to "AmazonLinux2023" in `manager/generate_eks.py`
+
+2. **AMI Search Patterns**: Updated `build/generate_ami_mapping.go` to search for AL2023 AMI naming pattern:
+   - Old AL2: `amazon-eks-node-{version}-v*` (CPU), `amazon-eks-gpu-node-{version}-v*` (GPU)
+   - New AL2023: `amazon-eks-node-al2023-x86_64-standard-{version}-v*` (CPU)
+   - New AL2023: `amazon-eks-node-al2023-x86_64-nvidia-{version}-v*` (GPU - available since October 2024)
+   - Note: AL2023 has separate AMI variants for NVIDIA GPU vs AWS Neuron (unlike AL2 which had one unified GPU AMI)
+
+3. **Bootstrap Configuration**: Updated for AL2023's NodeConfig format:
+   - **Removed** (don't work with AL2023):
+     - `kubeletExtraConfig`
+     - `overrideBootstrapCommand` with `/etc/eks/bootstrap.sh`
+   - **Changed**:
+     - `preBootstrapCommands`: Now works with AL2023 (re-enabled in eksctl PR #8031, Dec 2024)
+     - `overrideBootstrapCommand`: Now contains plain NodeConfig YAML
+     - Custom AMI + overrideBootstrapCommand: Now supported together (eksctl PR #8078, Dec 2024)
+   - **How it works**:
+     - preBootstrapCommands runs shell scripts before nodeadm (for IPVS module loading)
+     - overrideBootstrapCommand provides NodeConfig YAML for kubelet configuration
+     - eksctl handles MIME multipart wrapping and cluster metadata injection automatically
+
+4. **Kernel Module Changes**: Updated module name for AL2023's newer kernel:
+   - Old: `nf_conntrack_ipv4`
+   - New: `nf_conntrack`
+
+### Requirements
+
+- **eksctl**: Version 0.199.0+ required for AL2023 full support
+  - v0.176.0+: Basic AL2023 support
+  - v0.199.0+: overrideBootstrapCommand with custom AMI (PR #8078, Dec 10, 2024)
+  - v0.216.0+: preBootstrapCommands support (PR #8031, Dec 2024)
+  - Current in codebase: v0.216.0 ✓
+- **VPC CNI**: Version 1.16.2+ required for AL2023 (current: 1.20.3 ✓)
+
+### Testing Considerations
+
+1. **IPVS Modules**: Verify IPVS kernel modules load correctly on AL2023 nodes:
+   - SSH into a node and run `lsmod | grep ip_vs` to confirm modules are loaded
+   - Check kube-proxy logs for "Using ipvs Proxier" message
+
+2. **SSL Certificates**: AL2023 may use different certificate paths than AL2:
+   - Current configuration uses `/etc/ssl/certs/ca-bundle.crt`
+   - AL2023 canonical path is `/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem`
+   - Verify cluster-autoscaler can access SSL certificates
+   - If issues arise, update `manager/manifests/cluster-autoscaler.yaml.j2` line 231
+
+3. **Node Initialization**: Monitor node startup to ensure:
+   - NodeConfig is properly applied
+   - Nodes join the cluster successfully
+   - Node labels and taints are applied correctly
+
+4. **Performance**: AL2023 uses cgroupv2 (vs AL2's cgroupv1), monitor for any performance differences
+
+### Troubleshooting
+
+**If nodes fail to join cluster:**
+- Check cloud-init logs: `sudo cat /var/log/cloud-init-output.log`
+- Check nodeadm logs: `sudo journalctl -u nodeadm-config -u nodeadm-run`
+- Verify nodeadm configuration: `sudo cat /etc/nodeadm/config.yaml` (if it exists)
+- Check kubelet logs: `sudo journalctl -u kubelet`
+
+**Common Issue - Template Variables in overrideBootstrapCommand:**
+- Don't use eksctl template variables like `{{.NodeLabels}}` or `{{.NodeTaints}}` in overrideBootstrapCommand
+- These don't get substituted and will cause nodeadm to fail when merging configs
+- eksctl automatically generates proper flags in the first NodeConfig - let it handle node labels/taints
+
+**If IPVS mode doesn't work:**
+- Verify modules are loaded: `lsmod | grep ip_vs`
+- Check the shell script executed: Review cloud-init logs for ipvsadm installation
+
+**If cluster-autoscaler has SSL issues:**
+- Update hostPath in `cluster-autoscaler.yaml.j2` to `/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem`
+- Update mountPath comment to reflect AL2023 path
+
+### References
+
+- [AWS EKS AL2023 Documentation](https://docs.aws.amazon.com/eks/latest/userguide/al2023.html)
+- [AWS EKS Kubernetes 1.34 Release Notes](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions-standard.html)
+- [nodeadm Configuration Reference](https://awslabs.github.io/amazon-eks-ami/nodeadm/)
+- [eksctl AL2023 Node Bootstrapping](https://eksctl.io/usage/node-bootstrapping/)
+
 ## kube-proxy (IPVS mode)
 
 1. Before spinning up a Cortex cluster with the new eksctl/kubernetes/eks updates, make sure to have the `setup_ipvs` functional call commented out in the manager.
