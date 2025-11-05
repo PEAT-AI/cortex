@@ -158,17 +158,17 @@ func SupportedRegions() []string {
 		RegionEUWest3,
 		RegionEUNorth1,
 		RegionEUCentral1,
-		RegionEUSouth1,
+		//RegionEUSouth1,
 		RegionAPNorthEast1,
 		RegionAPNorthEast2,
 		RegionAPNorthEast3,
 		RegionAPSouthEast1,
 		RegionAPSouthEast2,
 		RegionAPSouth1,
-		RegionAPEast1,
-		RegionMESouth1,
+		//RegionAPEast1,
+		//RegionMESouth1,
 		RegionSAEast1,
-		RegionAFSouth1,
+		//RegionAFSouth1,
 		RegionUSGovWest1,
 		RegionUSGovEast1,
 		// RegionCNNorthwest1,
@@ -222,7 +222,7 @@ func main() {
 		json.Unmarshal(jsonBytes, &k8sVersionMap)
 	}
 
-	k8sVersion := "1.22"
+	k8sVersion := "1.34"
 
 	if k8sVersionMap[k8sVersion] == nil {
 		k8sVersionMap[k8sVersion] = map[string]map[string]string{}
@@ -235,15 +235,18 @@ func main() {
 		fmt.Print(region)
 		sess := session.New(&aws.Config{Region: aws.String(region)})
 		svc := ec2.New(sess)
-		cpuAmd64AMI, err := FindImage(svc, EKSResourceAccountID(region), fmt.Sprintf("amazon-eks-node-%s-v*", k8sVersion))
+		// AL2023 AMI naming pattern: amazon-eks-node-al2023-{arch}-{type}-{version}-v*
+		// Types: standard (CPU), nvidia (GPU), neuron (Inferentia)
+		cpuAmd64AMI, err := FindImage(svc, EKSResourceAccountID(region), fmt.Sprintf("amazon-eks-node-al2023-x86_64-standard-%s-v*", k8sVersion))
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-		cpuArm64AMI, err := FindImage(svc, EKSResourceAccountID(region), fmt.Sprintf("amazon-eks-arm64-node-%s-v*", k8sVersion))
+		cpuArm64AMI, err := FindImage(svc, EKSResourceAccountID(region), fmt.Sprintf("amazon-eks-node-al2023-arm64-standard-%s-v*", k8sVersion))
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-		acceleratedAmd64AMI, err := FindImage(svc, EKSResourceAccountID(region), fmt.Sprintf("amazon-eks-gpu-node-%s-v*", k8sVersion))
+		// AL2023 GPU AMIs available since October 2024
+		acceleratedAmd64AMI, err := FindImage(svc, EKSResourceAccountID(region), fmt.Sprintf("amazon-eks-node-al2023-x86_64-nvidia-%s-v*", k8sVersion))
 		if err != nil {
 			log.Fatal(err.Error())
 		}

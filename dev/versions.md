@@ -7,8 +7,8 @@
 1. Update `generate_eks.py` if necessary
 1. Check that `eksctl utils write-kubeconfig` log filter still behaves as desired, and logs in `cortex cluster up` look good.
 1. Update eksctl on your dev
-   machine: `curl --location "https://github.com/weaveworks/eksctl/releases/download/v0.107.0/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp && sudo mv -f /tmp/eksctl /usr/local/bin`
-1. Check if eksctl iam polices changed by comparing the previous version of the eksctl policy docs to the new version's and update `./dev/minimum_aws_policy.json` and `docs/clusters/management/auth.md` accordingly. https://github.com/weaveworks/eksctl/blob/v0.107.0/userdocs/src/usage/minimum-iam-policies.md
+   machine: `curl --location "https://github.com/weaveworks/eksctl/releases/download/v0.206.0/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp && sudo mv -f /tmp/eksctl /usr/local/bin`
+1. Check if eksctl iam polices changed by comparing the previous version of the eksctl policy docs to the new version's and update `./dev/minimum_aws_policy.json` and `docs/clusters/management/auth.md` accordingly. https://github.com/weaveworks/eksctl/blob/v0.216.0/userdocs/src/usage/minimum-iam-policies.md
 
 ## Kubernetes
 
@@ -17,6 +17,93 @@
 1. Update the version in `generate_eks.py`
 1. Update `ami.json` (see release checklist for instructions)
 1. See instructions for upgrading the Kubernetes client below
+
+## Amazon Linux 2 to Amazon Linux 2023 Migration (Kubernetes 1.34+)
+
+**IMPORTANT:** AWS does not provide Amazon Linux 2 AMIs for Kubernetes 1.34 and later. Migration to Amazon Linux 2023 is mandatory for K8s 1.34+.
+
+### Key Changes Made
+
+1. **AMI Family**: Updated `AMI_FAMILY` from "AmazonLinux2" to "AmazonLinux2023" in `manager/generate_eks.py`
+
+2. **AMI Search Patterns**: Updated `build/generate_ami_mapping.go` to search for AL2023 AMI naming pattern:
+   - Old AL2: `amazon-eks-node-{version}-v*` (CPU), `amazon-eks-gpu-node-{version}-v*` (GPU)
+   - New AL2023: `amazon-eks-node-al2023-x86_64-standard-{version}-v*` (CPU)
+   - New AL2023: `amazon-eks-node-al2023-x86_64-nvidia-{version}-v*` (GPU - available since October 2024)
+   - Note: AL2023 has separate AMI variants for NVIDIA GPU vs AWS Neuron (unlike AL2 which had one unified GPU AMI)
+
+3. **Bootstrap Configuration**: Updated for AL2023's NodeConfig format:
+   - **Removed** (don't work with AL2023):
+     - `kubeletExtraConfig`
+     - `overrideBootstrapCommand` with `/etc/eks/bootstrap.sh`
+   - **Changed**:
+     - `preBootstrapCommands`: Now works with AL2023 (re-enabled in eksctl PR #8031, Dec 2024)
+     - `overrideBootstrapCommand`: Now contains plain NodeConfig YAML
+     - Custom AMI + overrideBootstrapCommand: Now supported together (eksctl PR #8078, Dec 2024)
+   - **How it works**:
+     - preBootstrapCommands runs shell scripts before nodeadm (for IPVS module loading)
+     - overrideBootstrapCommand provides NodeConfig YAML for kubelet configuration
+     - eksctl handles MIME multipart wrapping and cluster metadata injection automatically
+
+4. **Kernel Module Changes**: Updated module name for AL2023's newer kernel:
+   - Old: `nf_conntrack_ipv4`
+   - New: `nf_conntrack`
+
+### Requirements
+
+- **eksctl**: Version 0.199.0+ required for AL2023 full support
+  - v0.176.0+: Basic AL2023 support
+  - v0.199.0+: overrideBootstrapCommand with custom AMI (PR #8078, Dec 10, 2024)
+  - v0.216.0+: preBootstrapCommands support (PR #8031, Dec 2024)
+  - Current in codebase: v0.216.0 ✓
+- **VPC CNI**: Version 1.16.2+ required for AL2023 (current: 1.20.3 ✓)
+
+### Testing Considerations
+
+1. **IPVS Modules**: Verify IPVS kernel modules load correctly on AL2023 nodes:
+   - SSH into a node and run `lsmod | grep ip_vs` to confirm modules are loaded
+   - Check kube-proxy logs for "Using ipvs Proxier" message
+
+2. **SSL Certificates**: AL2023 may use different certificate paths than AL2:
+   - Current configuration uses `/etc/ssl/certs/ca-bundle.crt`
+   - AL2023 canonical path is `/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem`
+   - Verify cluster-autoscaler can access SSL certificates
+   - If issues arise, update `manager/manifests/cluster-autoscaler.yaml.j2` line 231
+
+3. **Node Initialization**: Monitor node startup to ensure:
+   - NodeConfig is properly applied
+   - Nodes join the cluster successfully
+   - Node labels and taints are applied correctly
+
+4. **Performance**: AL2023 uses cgroupv2 (vs AL2's cgroupv1), monitor for any performance differences
+
+### Troubleshooting
+
+**If nodes fail to join cluster:**
+- Check cloud-init logs: `sudo cat /var/log/cloud-init-output.log`
+- Check nodeadm logs: `sudo journalctl -u nodeadm-config -u nodeadm-run`
+- Verify nodeadm configuration: `sudo cat /etc/nodeadm/config.yaml` (if it exists)
+- Check kubelet logs: `sudo journalctl -u kubelet`
+
+**Common Issue - Template Variables in overrideBootstrapCommand:**
+- Don't use eksctl template variables like `{{.NodeLabels}}` or `{{.NodeTaints}}` in overrideBootstrapCommand
+- These don't get substituted and will cause nodeadm to fail when merging configs
+- eksctl automatically generates proper flags in the first NodeConfig - let it handle node labels/taints
+
+**If IPVS mode doesn't work:**
+- Verify modules are loaded: `lsmod | grep ip_vs`
+- Check the shell script executed: Review cloud-init logs for ipvsadm installation
+
+**If cluster-autoscaler has SSL issues:**
+- Update hostPath in `cluster-autoscaler.yaml.j2` to `/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem`
+- Update mountPath comment to reflect AL2023 path
+
+### References
+
+- [AWS EKS AL2023 Documentation](https://docs.aws.amazon.com/eks/latest/userguide/al2023.html)
+- [AWS EKS Kubernetes 1.34 Release Notes](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions-standard.html)
+- [nodeadm Configuration Reference](https://awslabs.github.io/amazon-eks-ami/nodeadm/)
+- [eksctl AL2023 Node Bootstrapping](https://eksctl.io/usage/node-bootstrapping/)
 
 ## kube-proxy (IPVS mode)
 
@@ -71,8 +158,8 @@
 
 ```bash
 PREV_RELEASE=1.10.1
-NEW_RELEASE=1.11.0
-wget -q -O cni_supported_instances_prev.txt https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/v${PREV_RELEASE}/pkg/awsutils/vpc_ip_resource_limit.go; wget -q -O cni_supported_instances_new.txt https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/v${NEW_RELEASE}/pkg/awsutils/vpc_ip_resource_limit.go; git diff --no-index cni_supported_instances_prev.txt cni_supported_instances_new.txt; rm -rf cni_supported_instances_prev.txt; rm -rf cni_supported_instances_new.txt
+NEW_RELEASE=1.19.3
+wget -q -O cni_supported_instances_prev.txt https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/v${PREV_RELEASE}/pkg/awsutils/vpc_ip_resource_limit.go; wget -q -O cni_supported_instances_new.txt https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/v${NEW_RELEASE}/pkg/vpc/vpc_ip_resource_limit.go; git diff --no-index cni_supported_instances_prev.txt cni_supported_instances_new.txt; rm -rf cni_supported_instances_prev.txt; rm -rf cni_supported_instances_new.txt
 ```
 
 ## Go
@@ -86,11 +173,11 @@ wget -q -O cni_supported_instances_prev.txt https://raw.githubusercontent.com/aw
      ```shell
         mkdir -p $HOME/temp
         cd $HOME/temp
-        wget https://dl.google.com/go/go1.17.3.linux-amd64.tar.gz && \
-        tar -xvf go1.17.3.linux-amd64.tar.gz && \
+        wget https://dl.google.com/go/go1.24.0.linux-amd64.tar.gz && \
+        tar -xvf go1.24.0.linux-amd64.tar.gz && \
         sudo rm -rf /usr/local/go && \
         sudo mv -f go /usr/local && \
-        rm go1.17.3.linux-amd64.tar.gz && \
+        rm go1.24.0.linux-amd64.tar.gz && \
         if [ -f $HOME/.bash_profile ]; then source $HOME/.bash_profile; else source $HOME/.bashrc; fi && \
         cd - && \
         go version
@@ -122,15 +209,15 @@ wget -q -O cni_supported_instances_prev.txt https://raw.githubusercontent.com/aw
 _note: docker client installation may be able to be improved,
 see https://github.com/moby/moby/issues/39302#issuecomment-639687466_
 
-### cortexlabs/yaml
+### PEAT-AI/yaml
 
 1. Check [go-yaml/yaml](https://github.com/go-yaml/yaml/commits/v2) to see if there were new releases
-   since [cortexlabs/yaml](https://github.com/cortexlabs/yaml/commits/v2)
-1. `git clone git@github.com:cortexlabs/yaml.git && cd yaml`
+   since [PEAT-AI/yaml](https://github.com/PEAT-AI/yaml/commits/v2)
+1. `git clone git@github.com:PEAT-AI/yaml.git && cd yaml`
 1. `git remote add upstream https://github.com/go-yaml/yaml && git fetch upstream`
 1. `git merge upstream/v2`
 1. `git push origin v2`
-1. Follow the "Update non-versioned modules" instructions using the desired commit sha for `cortexlabs/yaml`
+1. Follow the "Update non-versioned modules" instructions using the desired commit sha for `PEAT-AI/yaml`
 
 ### cortexlabs/go-input
 
@@ -144,17 +231,23 @@ see https://github.com/moby/moby/issues/39302#issuecomment-639687466_
 
 ### Non-versioned modules
 
-1. `rm -rf go.mod go.sum && go mod init && go clean -modcache`
-1. `go get k8s.io/client-go@v0.20.15 && go get k8s.io/apimachinery@v0.20.15 && go get k8s.io/api@v0.20.15`
-1. `go get istio.io/client-go@v1.11.8 && go get istio.io/api@1.11.8`
-1. `go get github.com/aws/amazon-vpc-cni-k8s/pkg/awsutils@v1.11.0`
-1. `go get github.com/cortexlabs/yaml@31e52ba8433b683c471ef92cf1711fe67671dac5`
+1. `rm -rf go.mod go.sum && go mod init github.com/cortexlabs/cortex && go clean -modcache`
+1. `go get k8s.io/client-go@v0.34.0 && go get k8s.io/apimachinery@v0.34.0 && go get k8s.io/api@v0.34.0 && go get k8s.io/metrics@v0.34.0`
+1. `go get istio.io/client-go@v1.27.3 && go get istio.io/api@1.27.3`
+1. `go get github.com/aws/amazon-vpc-cni-k8s/pkg/awsutils@v1.20.3`
+1. `go get github.com/PEAT-AI/yaml@9ef823ab7fd0`
 1. `go get github.com/cortexlabs/go-input@8b67a7a7b28d1c45f5c588171b3b50148462b247`
-1. `go get github.com/xlab/treeprint@v1.0.0`
-1. `go get -u sigs.k8s.io/controller-runtime@v0.8.3`
-1. `echo -e '\nreplace github.com/docker/docker => github.com/docker/engine v19.03.13' >> go.mod`
+1. `go get github.com/xlab/treeprint@v1.2.0`
+1. `go get sigs.k8s.io/aws-iam-authenticator@v0.7.8 && go get sigs.k8s.io/controller-runtime@v0.22.4`
+   - Note: controller-runtime version must match k8s version (v0.22.x for k8s 1.34, v0.21.x for k8s 1.33, v0.20.x for k8s 1.32, etc.)
+   - Note: aws-iam-authenticator v0.7.x has breaking API change: `GetWithOptions(opts)` becomes `GetWithOptions(context.TODO(), opts)`. Update any calls in `cli/cmd/cluster.go` and add `"context"` import if needed.
+1. `go get github.com/docker/docker@v27.1.1+incompatible`
+   - Note: No replace directive needed for modern docker versions
 1. `go get -u github.com/docker/distribution`
 1. `go mod tidy`
+1. Test compilation with `go build ./...`
+   - If you get errors about `sentry.Logger.SetOutput`, downgrade sentry-go: `go get github.com/getsentry/sentry-go@v0.31.1 && go mod tidy`
+   - The v0.36.x versions have breaking API changes
 1. Potentially skip these steps
    1. For every non-indirect, non-hardcoded dependency in go.mod, update with `go get -u <path>`
    1. `go mod tidy`
@@ -169,7 +262,7 @@ see https://github.com/moby/moby/issues/39302#issuecomment-639687466_
 1. Update the version in `images/nvidia-device-plugin/Dockerfile` ([releases](https://github.com/NVIDIA/k8s-device-plugin/releases)
    , [Dockerhub](https://hub.docker.com/r/nvidia/k8s-device-plugin))
 1. In the [GitHub Repo](https://github.com/NVIDIA/k8s-device-plugin), find the latest release and go to this file (
-   replacing the version number): <https://github.com/NVIDIA/k8s-device-plugin/blob/v0.6.0/nvidia-device-plugin.yml>
+   replacing the version number): <https://github.com/NVIDIA/k8s-device-plugin/blob/v0.15.0/deployments/static/nvidia-device-plugin.yml>
 1. Copy the contents to `manager/manifests/nvidia.yaml`
     1. Update the link at the top of the file to the URL you copied from
     1. Check that your diff is reasonable (and put back any of our modifications, e.g. the image path, rolling update
@@ -198,7 +291,7 @@ see https://github.com/moby/moby/issues/39302#issuecomment-639687466_
 
 ## Cluster autoscaler
 
-1. Find the latest patch release for our current version of k8s (e.g. k8s v1.17 -> cluster-autocluster v1.17.3)
+1. Find the latest patch release for our current version of k8s (e.g. k8s v1.17 -> cluster-autocluster v1.24.0)
    on [GitHub](https://github.com/kubernetes/autoscaler/releases) and check the changelog
 1. In the [GitHub Repo](https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/aws),
    set the tree to the tag for the chosen release, and open `cloudprovider/aws/examples/cluster-autoscaler-autodiscover.yaml`
@@ -208,7 +301,7 @@ see https://github.com/moby/moby/issues/39302#issuecomment-639687466_
 1. Checkout our updated branch: `git checkout cluster-autoscaler-1.21.1-cortex`
 1. List the most recent commit: `git log`
 1. Reset the latest commit (use the SHA of the last non-cortex commit): `git reset <SHA>`
-1. `git add *`
+1. `git add .`
 1. `git stash`
 1. `git remote add upstream https://github.com/kubernetes/autoscaler.git`
 1. `git fetch upstream`

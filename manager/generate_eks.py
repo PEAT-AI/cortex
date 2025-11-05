@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import json
-import click
-
-from collections import namedtuple
 import re
+from collections import namedtuple
+
+import click
 import yaml
 
-K8S_VERSION = "1.22"
+K8S_VERSION = "1.34"
+AMI_FAMILY = "AmazonLinux2023"
 
 ParsedInstanceType = namedtuple(
     "ParsedInstanceType", ["family", "generation", "capabilities", "size"]
@@ -60,27 +61,40 @@ def default_nodegroup(cluster_config):
             + cluster_config.get("iam_policy_arns", []),
         },
         "privateNetworking": cluster_config.get("subnet_visibility", "public") != "public",
-        "kubeletExtraConfig": {
-            "kubeReserved": {"cpu": "150m", "memory": "300Mi", "ephemeral-storage": "1Gi"},
-            "kubeReservedCgroup": "/kube-reserved",
-            "systemReserved": {"cpu": "150m", "memory": "300Mi", "ephemeral-storage": "1Gi"},
-            "evictionHard": {"memory.available": "200Mi", "nodefs.available": "5%"},
-            "registryPullQPS": 10,
-        },
+        # AL2023 supports preBootstrapCommands (re-enabled in eksctl PR #8031, Dec 2024)
         "preBootstrapCommands": [
-            "sudo yum install -y ipvsadm",
-            "sudo modprobe ip_vs",  # IP virtual server
-            "sudo modprobe ip_vs_rr",  # round robing load balancer
-            "sudo modprobe ip_vs_lc",  # least connected load balancer
-            "sudo modprobe ip_vs_wrr",  # weighted round robin load balancer
-            "sudo modprobe ip_vs_sh",  # source-hashing load balancer
-            "sudo modprobe nf_conntrack_ipv4",
+            "yum install -y ipvsadm",
+            "modprobe ip_vs",  # IP virtual server
+            "modprobe ip_vs_rr",  # round robin load balancer
+            "modprobe ip_vs_lc",  # least connected load balancer
+            "modprobe ip_vs_wrr",  # weighted round robin load balancer
+            "modprobe ip_vs_sh",  # source-hashing load balancer
+            "modprobe nf_conntrack",  # AL2023 uses nf_conntrack instead of nf_conntrack_ipv4
         ],
+        # AL2023 uses NodeConfig YAML format in overrideBootstrapCommand
+        # NOTE: Don't include 'flags' with template variables - eksctl generates those
+        # automatically in the first NodeConfig. Template variables like {{.NodeLabels}}
+        # don't get substituted in overrideBootstrapCommand and will cause nodeadm to fail.
         "overrideBootstrapCommand": "\n".join(
             [
-                "#!/bin/bash",
-                "source /var/lib/cloud/scripts/eksctl/bootstrap.helper.sh",
-                f"/etc/eks/bootstrap.sh {cluster_config['cluster_name']} --container-runtime dockerd --kubelet-extra-args \"--node-labels=${{NODE_LABELS}} --register-with-taints=${{NODE_TAINTS}}\"",
+                "apiVersion: node.eks.aws/v1alpha1",
+                "kind: NodeConfig",
+                "spec:",
+                "  kubelet:",
+                "    config:",
+                "      kubeReserved:",
+                '        cpu: "150m"',
+                '        memory: "300Mi"',
+                '        ephemeral-storage: "1Gi"',
+                '      kubeReservedCgroup: "/kube-reserved"',
+                "      systemReserved:",
+                '        cpu: "150m"',
+                '        memory: "300Mi"',
+                '        ephemeral-storage: "1Gi"',
+                "      evictionHard:",
+                '        memory.available: "200Mi"',
+                '        nodefs.available: "5%"',
+                "      registryPullQPS: 10",
             ]
         ),
     }
@@ -250,6 +264,7 @@ def get_worker_nodegroup(ami_map: dict, nodegroup_config: dict, cluster_config: 
     """
     worker_nodegroup = default_nodegroup(cluster_config)
     worker_nodegroup["ami"] = get_ami(ami_map, nodegroup_config["instance_type"])
+    worker_nodegroup["amiFamily"] = AMI_FAMILY
 
     apply_worker_settings(worker_nodegroup, nodegroup_config)
     apply_clusterconfig(worker_nodegroup, nodegroup_config)
@@ -344,6 +359,7 @@ def generate_eks(
     operator_nodegroup = default_nodegroup(cluster_config)
     operator_settings = {
         "ami": get_ami(ami_map, "t3.medium"),
+        "amiFamily": AMI_FAMILY,
         "name": "cx-operator",
         "instanceType": "t3.medium",
         "minSize": 2,
@@ -360,6 +376,7 @@ def generate_eks(
     prometheus_nodegroup = default_nodegroup(cluster_config)
     prometheus_settings = {
         "ami": get_ami(ami_map, prometheus_instance_type),
+        "amiFamily": AMI_FAMILY,
         "name": "cx-prometheus",
         "instanceType": prometheus_instance_type,
         "minSize": 1,
@@ -402,7 +419,7 @@ def generate_eks(
         "addons": [
             {
                 "name": "vpc-cni",
-                "version": "1.11.3",
+                "version": "1.20.3",
             },
         ],
     }
