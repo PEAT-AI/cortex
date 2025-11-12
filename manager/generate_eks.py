@@ -36,7 +36,7 @@ def parse_instance_type(instance_type: str) -> ParsedInstanceType:
     size = parts[1]
 
     family = re.search("[a-z]*", prefix.lower()).group()
-    generation = re.sub("\D", "", prefix.lower())
+    generation = re.sub(r"\D", "", prefix.lower())
     capabilities = prefix[len(family) + len(generation) :]
 
     return ParsedInstanceType(family, generation, capabilities, size)
@@ -72,11 +72,24 @@ def default_nodegroup(cluster_config):
             "modprobe nf_conntrack",  # AL2023 uses nf_conntrack instead of nf_conntrack_ipv4
         ],
         # AL2023 uses NodeConfig YAML format in overrideBootstrapCommand
-        # NOTE: Don't include 'flags' with template variables - eksctl generates those
-        # automatically in the first NodeConfig. Template variables like {{.NodeLabels}}
-        # don't get substituted in overrideBootstrapCommand and will cause nodeadm to fail.
+        # We dynamically detect spot vs on-demand using IMDS and add the appropriate label
         "overrideBootstrapCommand": "\n".join(
             [
+                "#!/bin/bash",
+                "set -e",
+                "# Detect instance lifecycle from EC2 Instance Metadata Service",
+                "# Using IMDSv2 with token-based authentication",
+                'TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" 2>/dev/null || echo "")',
+                'if [ -n "$TOKEN" ]; then',
+                '  LIFECYCLE=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/instance-life-cycle 2>/dev/null || echo "normal")',
+                "else",
+                '  # Fallback to IMDSv1 if v2 fails',
+                '  LIFECYCLE=$(curl -s http://169.254.169.254/latest/meta-data/instance-life-cycle 2>/dev/null || echo "normal")',
+                "fi",
+                "# Set the node label based on lifecycle (normal = on-demand)",
+                '[ "$LIFECYCLE" = "spot" ] && LIFECYCLE_LABEL="spot" || LIFECYCLE_LABEL="on-demand"',
+                "# Generate NodeConfig YAML with lifecycle label",
+                "cat > /tmp/nodeadm-config.yaml <<'EOF'",
                 "apiVersion: node.eks.aws/v1alpha1",
                 "kind: NodeConfig",
                 "spec:",
@@ -95,6 +108,13 @@ def default_nodegroup(cluster_config):
                 '        memory.available: "200Mi"',
                 '        nodefs.available: "5%"',
                 "      registryPullQPS: 10",
+                "    flags:",
+                "      - --node-labels=node.kubernetes.io/lifecycle=LIFECYCLE_PLACEHOLDER",
+                "EOF",
+                "# Replace the placeholder with actual lifecycle value",
+                'sed -i "s/LIFECYCLE_PLACEHOLDER/$LIFECYCLE_LABEL/g" /tmp/nodeadm-config.yaml',
+                "# Initialize the node with nodeadm",
+                "nodeadm init -c file:///tmp/nodeadm-config.yaml",
             ]
         ),
     }
@@ -146,9 +166,9 @@ def apply_clusterconfig(nodegroup, config):
         "desiredCapacity": 1 if config["min_instances"] == 0 else config["min_instances"],
     }
     # add iops to settings if volume_type is io1/gp3
-    if config["instance_volume_type"] in ["io1", "gp3"]:
+    if config["instance_volume_type"] in ["io1", "gp3"] and "instance_volume_iops" in config:
         clusterconfig_settings["volumeIOPS"] = config["instance_volume_iops"]
-    if config["instance_volume_type"] == "gp3":
+    if config["instance_volume_type"] == "gp3" and "instance_volume_throughput" in config:
         clusterconfig_settings["volumeThroughput"] = config["instance_volume_throughput"]
 
     return merge_override(nodegroup, clusterconfig_settings)
@@ -164,11 +184,15 @@ def apply_spot_settings(nodegroup, config):
             "onDemandPercentageAboveBaseCapacity": config["spot_config"][
                 "on_demand_percentage_above_base_capacity"
             ],
-            "maxPrice": config["spot_config"]["max_price"],
-            "spotInstancePools": config["spot_config"]["instance_pools"],
         },
         "labels": {"lifecycle": "Ec2Spot"},
     }
+
+    # max_price and instance_pools are optional
+    if "max_price" in config["spot_config"] and config["spot_config"]["max_price"] is not None:
+        spot_settings["instancesDistribution"]["maxPrice"] = config["spot_config"]["max_price"]
+    if "instance_pools" in config["spot_config"] and config["spot_config"]["instance_pools"] is not None:
+        spot_settings["instancesDistribution"]["spotInstancePools"] = config["spot_config"]["instance_pools"]
 
     return merge_override(nodegroup, spot_settings)
 

@@ -127,7 +127,7 @@ func clusterTelemetryProperties() (map[string]interface{}, error) {
 		}
 
 		isSpot := false
-		if node.Labels["node-lifecycle"] == "spot" {
+		if node.Labels["node.kubernetes.io/lifecycle"] == "spot" {
 			isSpot = true
 		}
 
@@ -303,7 +303,7 @@ func CostBreakdown() error {
 		}
 
 		isSpot := false
-		if node.Labels["node-lifecycle"] == "spot" {
+		if node.Labels["node.kubernetes.io/lifecycle"] == "spot" {
 			isSpot = true
 		}
 
