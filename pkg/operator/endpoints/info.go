@@ -75,7 +75,7 @@ func getWorkerNodeInfos() ([]schema.WorkerNodeInfo, int, error) {
 
 		instanceType := node.Labels["node.kubernetes.io/instance-type"]
 		nodeGroupName := node.Labels["alpha.eksctl.io/nodegroup-name"]
-		isSpot := node.Labels["node.kubernetes.io/lifecycle"] == "spot"
+		isSpot := node.Labels["node-lifecycle"] == "spot"
 
 		price := aws.InstanceMetadatas[config.ClusterConfig.Region][instanceType].Price
 		if isSpot {
