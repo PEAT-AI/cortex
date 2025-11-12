@@ -278,6 +278,85 @@ func (c *Client) SpotInstancePrice(instanceType string) (float64, error) {
 	return min, nil
 }
 
+// ExtractInstanceIDFromProviderID extracts the EC2 instance ID from a Kubernetes node providerID
+// ProviderID format: "aws:///zone/i-xxxxx" or "aws://zone/i-xxxxx"
+func ExtractInstanceIDFromProviderID(providerID string) (string, error) {
+	if providerID == "" {
+		return "", errors.ErrorUnexpected("provider ID is empty")
+	}
+
+	parts := strings.Split(providerID, "/")
+	if len(parts) < 2 {
+		return "", errors.Wrap(errors.ErrorUnexpected("invalid provider ID format"), providerID)
+	}
+
+	instanceID := parts[len(parts)-1]
+	if !strings.HasPrefix(instanceID, "i-") {
+		return "", errors.Wrap(errors.ErrorUnexpected("invalid instance ID format"), instanceID)
+	}
+
+	return instanceID, nil
+}
+
+// GetInstanceLifecycles queries EC2 API to determine spot vs on-demand lifecycle for multiple instances
+// Returns a map of instanceID -> isSpot
+// This is more efficient than calling IsSpotInstance multiple times
+func (c *Client) GetInstanceLifecycles(instanceIDs []string) (map[string]bool, error) {
+	if len(instanceIDs) == 0 {
+		return make(map[string]bool), nil
+	}
+
+	// DescribeInstances accepts up to 200 instance IDs per call
+	// For simplicity, we'll batch in groups of 200 if needed
+	lifecycles := make(map[string]bool)
+
+	for i := 0; i < len(instanceIDs); i += 200 {
+		end := i + 200
+		if end > len(instanceIDs) {
+			end = len(instanceIDs)
+		}
+		batch := instanceIDs[i:end]
+
+		result, err := c.EC2().DescribeInstances(&ec2.DescribeInstancesInput{
+			InstanceIds: aws.StringSlice(batch),
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "describing instances")
+		}
+
+		for _, reservation := range result.Reservations {
+			for _, instance := range reservation.Instances {
+				if instance.InstanceId == nil {
+					continue
+				}
+
+				instanceID := *instance.InstanceId
+				// InstanceLifecycle is "spot" for spot instances, nil for on-demand
+				isSpot := instance.InstanceLifecycle != nil && *instance.InstanceLifecycle == "spot"
+				lifecycles[instanceID] = isSpot
+			}
+		}
+	}
+
+	return lifecycles, nil
+}
+
+// IsSpotInstance queries EC2 API to determine if an instance is a spot instance
+// For checking multiple instances, use GetInstanceLifecycles for better performance
+func (c *Client) IsSpotInstance(instanceID string) (bool, error) {
+	lifecycles, err := c.GetInstanceLifecycles([]string{instanceID})
+	if err != nil {
+		return false, err
+	}
+
+	isSpot, ok := lifecycles[instanceID]
+	if !ok {
+		return false, errors.ErrorUnexpected("instance not found in response", instanceID)
+	}
+
+	return isSpot, nil
+}
+
 func (c *Client) ListAllRegions() (strset.Set, error) {
 	result, err := c.EC2().DescribeRegions(&ec2.DescribeRegionsInput{
 		AllRegions: aws.Bool(true),

@@ -113,6 +113,30 @@ func clusterTelemetryProperties() (map[string]interface{}, error) {
 
 	spotPriceCache := make(map[string]float64) // instance type -> spot price
 
+	// Extract all instance IDs from workload nodes for batched EC2 API call
+	instanceIDs := make([]string, 0, len(nodes))
+	nodeInstanceIDMap := make(map[string]string) // node UID -> instance ID
+	for _, node := range nodes {
+		if node.Labels["workload"] == "true" {
+			instanceID, err := aws.ExtractInstanceIDFromProviderID(node.Spec.ProviderID)
+			if err != nil {
+				// Log error but continue - will fallback to label check for this node
+				operatorLogger.Warnf("failed to extract instance ID from provider ID %s: %s", node.Spec.ProviderID, err.Error())
+				continue
+			}
+			instanceIDs = append(instanceIDs, instanceID)
+			nodeInstanceIDMap[string(node.UID)] = instanceID
+		}
+	}
+
+	// Query EC2 API for instance lifecycles (single batched call)
+	instanceLifecycles, err := config.AWS.GetInstanceLifecycles(instanceIDs)
+	if err != nil {
+		// Log error but continue - will fallback to label checks for all nodes
+		operatorLogger.Warnf("failed to query EC2 instance lifecycles: %s", err.Error())
+		instanceLifecycles = make(map[string]bool) // empty map, will trigger fallback
+	}
+
 	for _, node := range nodes {
 		if node.Labels["workload"] != "true" {
 			if node.Labels["alpha.eksctl.io/nodegroup-name"] == "cx-operator" {
@@ -126,9 +150,18 @@ func clusterTelemetryProperties() (map[string]interface{}, error) {
 			instanceType = "unknown"
 		}
 
+		// Determine spot status from EC2 API, fallback to label check
 		isSpot := false
-		if node.Labels["node-lifecycle"] == "spot" {
-			isSpot = true
+		if instanceID, ok := nodeInstanceIDMap[string(node.UID)]; ok {
+			if spotStatus, found := instanceLifecycles[instanceID]; found {
+				isSpot = spotStatus
+			} else {
+				// Fallback to label check if instance not in EC2 response
+				isSpot = node.Labels["lifecycle"] == "Ec2Spot"
+			}
+		} else {
+			// Fallback to label check if we couldn't extract instance ID
+			isSpot = node.Labels["lifecycle"] == "Ec2Spot"
 		}
 
 		totalInstances++
@@ -282,6 +315,28 @@ func CostBreakdown() error {
 
 	spotPriceCache := make(map[string]float64) // instance type -> spot price
 
+	// Extract all instance IDs from nodes for batched EC2 API call
+	instanceIDs := make([]string, 0, len(nodes))
+	nodeInstanceIDMap := make(map[string]string) // node UID -> instance ID
+	for _, node := range nodes {
+		instanceID, err := aws.ExtractInstanceIDFromProviderID(node.Spec.ProviderID)
+		if err != nil {
+			// Log error but continue - will fallback to label check for this node
+			operatorLogger.Warnf("failed to extract instance ID from provider ID %s: %s", node.Spec.ProviderID, err.Error())
+			continue
+		}
+		instanceIDs = append(instanceIDs, instanceID)
+		nodeInstanceIDMap[string(node.UID)] = instanceID
+	}
+
+	// Query EC2 API for instance lifecycles (single batched call)
+	instanceLifecycles, err := config.AWS.GetInstanceLifecycles(instanceIDs)
+	if err != nil {
+		// Log error but continue - will fallback to label checks for all nodes
+		operatorLogger.Warnf("failed to query EC2 instance lifecycles: %s", err.Error())
+		instanceLifecycles = make(map[string]bool) // empty map, will trigger fallback
+	}
+
 	// Total cluster costs = cortex system + cortex workloads
 	var totalClusterCosts float64 = cortexSystemPrice(0, 0)
 	// Total cortex system costs = operator + prometheus node groups + workload daemonsets
@@ -302,9 +357,18 @@ func CostBreakdown() error {
 			workloadNode = true
 		}
 
+		// Determine spot status from EC2 API, fallback to label check
 		isSpot := false
-		if node.Labels["node-lifecycle"] == "spot" {
-			isSpot = true
+		if instanceID, ok := nodeInstanceIDMap[string(node.UID)]; ok {
+			if spotStatus, found := instanceLifecycles[instanceID]; found {
+				isSpot = spotStatus
+			} else {
+				// Fallback to label check if instance not in EC2 response
+				isSpot = node.Labels["lifecycle"] == "Ec2Spot"
+			}
+		} else {
+			// Fallback to label check if we couldn't extract instance ID
+			isSpot = node.Labels["lifecycle"] == "Ec2Spot"
 		}
 
 		var instanceComputePrice float64
