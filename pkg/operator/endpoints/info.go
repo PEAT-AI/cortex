@@ -70,12 +70,48 @@ func getWorkerNodeInfos() ([]schema.WorkerNodeInfo, int, error) {
 	nodeInfoMap := make(map[string]*schema.WorkerNodeInfo, len(nodes)) // node name -> info
 	spotPriceCache := make(map[string]float64)                         // instance type -> spot price
 
+	// Extract all instance IDs from nodes for batched EC2 API call
+	instanceIDs := make([]string, 0, len(nodes))
+	nodeInstanceIDMap := make(map[string]string) // node name -> instance ID
+	for i := range nodes {
+		node := nodes[i]
+		instanceID, err := aws.ExtractInstanceIDFromProviderID(node.Spec.ProviderID)
+		if err != nil {
+			// Log error but continue - will fallback to label check for this node
+			operatorLogger.Warnf("failed to extract instance ID from provider ID %s: %s", node.Spec.ProviderID, err.Error())
+			continue
+		}
+		instanceIDs = append(instanceIDs, instanceID)
+		nodeInstanceIDMap[node.Name] = instanceID
+	}
+
+	// Query EC2 API for instance lifecycles (single batched call)
+	instanceLifecycles, err := config.AWS.GetInstanceLifecycles(instanceIDs)
+	if err != nil {
+		// Log error but continue - will fallback to label checks for all nodes
+		operatorLogger.Warnf("failed to query EC2 instance lifecycles: %s", err.Error())
+		instanceLifecycles = make(map[string]bool) // empty map, will trigger fallback
+	}
+
 	for i := range nodes {
 		node := nodes[i]
 
 		instanceType := node.Labels["node.kubernetes.io/instance-type"]
 		nodeGroupName := node.Labels["alpha.eksctl.io/nodegroup-name"]
-		isSpot := node.Labels["node-lifecycle"] == "spot"
+
+		// Determine spot status from EC2 API, fallback to label check
+		isSpot := false
+		if instanceID, ok := nodeInstanceIDMap[node.Name]; ok {
+			if spotStatus, found := instanceLifecycles[instanceID]; found {
+				isSpot = spotStatus
+			} else {
+				// Fallback to label check if instance not in EC2 response
+				isSpot = node.Labels["lifecycle"] == "Ec2Spot"
+			}
+		} else {
+			// Fallback to label check if we couldn't extract instance ID
+			isSpot = node.Labels["lifecycle"] == "Ec2Spot"
+		}
 
 		price := aws.InstanceMetadatas[config.ClusterConfig.Region][instanceType].Price
 		if isSpot {
