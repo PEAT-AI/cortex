@@ -8,7 +8,7 @@
 1. Check that `eksctl utils write-kubeconfig` log filter still behaves as desired, and logs in `cortex cluster up` look good.
 1. Update eksctl on your dev
    machine: `curl --location "https://github.com/weaveworks/eksctl/releases/download/v0.206.0/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp && sudo mv -f /tmp/eksctl /usr/local/bin`
-1. Check if eksctl iam polices changed by comparing the previous version of the eksctl policy docs to the new version's and update `./dev/minimum_aws_policy.json` and `docs/clusters/management/auth.md` accordingly. https://github.com/weaveworks/eksctl/blob/v0.216.0/userdocs/src/usage/minimum-iam-policies.md
+1. Check if eksctl iam polices changed by comparing the previous version of the eksctl policy docs to the new version's and update `./dev/minimum_aws_policy.json` and `docs/clusters/management/auth.md` accordingly. https://github.com/weaveworks/eksctl/blob/v0.231.0/userdocs/src/usage/minimum-iam-policies.md
 
 ## Kubernetes
 
@@ -55,7 +55,7 @@
   - v0.176.0+: Basic AL2023 support
   - v0.199.0+: overrideBootstrapCommand with custom AMI (PR #8078, Dec 10, 2024)
   - v0.216.0+: preBootstrapCommands support (PR #8031, Dec 2024)
-  - Current in codebase: v0.216.0 ✓
+  - Current in codebase: v0.231.0 ✓
 - **VPC CNI**: Version 1.16.2+ required for AL2023 (current: 1.20.3 ✓)
 
 ### Testing Considerations
