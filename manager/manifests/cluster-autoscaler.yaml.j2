@@ -214,6 +214,10 @@ spec:
             - --max-node-provision-time=8m
             - --scan-interval=20s
             - --node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/{{ config['cluster_name'] }}
+          env:
+            # required since cluster-autoscaler 1.35 (AWS SDK v2): the region is no longer looked up from the instance metadata
+            - name: AWS_REGION
+              value: {{ config['region'] }}
           volumeMounts:
             - name: ssl-certs
               mountPath: /etc/ssl/certs/ca-certificates.crt # /etc/ssl/certs/ca-bundle.crt for Amazon Linux Worker Nodes
