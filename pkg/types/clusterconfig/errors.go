@@ -38,6 +38,7 @@ const (
 	ErrMaxNodesToAddOnClusterUp               = "clusterconfig.max_nodes_to_add_on_cluster_up"
 	ErrMaxNodesToAddOnClusterConfigure        = "clusterconfig.max_nodes_to_add_on_cluster_configure"
 	ErrInstanceTypeTooSmall                   = "clusterconfig.instance_type_too_small"
+	ErrCIDRHostBitsSet                        = "clusterconfig.cidr_host_bits_set"
 	ErrMinInstancesGreaterThanMax             = "clusterconfig.min_instances_greater_than_max"
 	ErrInstanceTypeNotSupportedInRegion       = "clusterconfig.instance_type_not_supported_in_region"
 	ErrIncompatibleSpotInstanceTypeMemory     = "clusterconfig.incompatible_spot_instance_type_memory"
@@ -145,6 +146,13 @@ func ErrorMaxNodesToAddOnClusterConfigure(requestedNodes, currentNodes, maxNodes
 	return errors.WithStack(&errors.Error{
 		Kind:    ErrMaxNodesToAddOnClusterConfigure,
 		Message: fmt.Sprintf("cannot add %d instances to your cluster (you requested %d total instances, but your cluster currently has %d instances); only %d instances can be added at time, so reduce the sum of %s across all nodegroups by %d", requestedNodes-currentNodes, requestedNodes, currentNodes, maxNodes, MinInstancesKey, requestedNodes-currentNodes-maxNodes),
+	})
+}
+
+func ErrorCIDRHostBitsSet(cidr string, canonicalCIDR string) error {
+	return errors.WithStack(&errors.Error{
+		Kind:    ErrCIDRHostBitsSet,
+		Message: fmt.Sprintf("%s: the address has bits set beyond the prefix length, which kubernetes does not accept; did you mean %s?", cidr, canonicalCIDR),
 	})
 }
 

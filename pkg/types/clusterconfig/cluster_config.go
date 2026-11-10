@@ -1533,9 +1533,14 @@ func (ng *NodeGroup) FillEmptySpotFields(region string) {
 }
 
 func validateCIDR(cidr string) (string, error) {
-	_, _, err := net.ParseCIDR(cidr)
+	ip, network, err := net.ParseCIDR(cidr)
 	if err != nil {
 		return "", errors.WithStack(err)
+	}
+
+	// kubernetes (1.37) rejects loadBalancerSourceRanges like 10.1.2.3/24
+	if !ip.Equal(network.IP) {
+		return "", ErrorCIDRHostBitsSet(cidr, network.String())
 	}
 
 	return cidr, nil
