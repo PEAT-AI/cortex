@@ -17,6 +17,6 @@ export CORTEX_CLUSTER_NAME="cortex-dev"
 export AWS_ACCOUNT_ID=970653281915
 export AWS_PROFILE=ml-admin
 export AWS_REGION=ap-south-1
-export CORTEX_VERSION=0.45.0
+export CORTEX_VERSION=0.46.0
 # create a cortex alias which runs your development CLI
 alias cortex="$CORTEX_CLI_PATH"
