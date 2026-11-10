@@ -316,22 +316,19 @@ Only if the quick path cannot be made to resolve, fall back to the clean re-init
    set the tree to the tag for the chosen release, and open `cloudprovider/aws/examples/cluster-autoscaler-autodiscover.yaml`
    (e.g. <https://github.com/kubernetes/autoscaler/blob/cluster-autoscaler-1.20.0/cluster-autoscaler/cloudprovider/aws/examples/cluster-autoscaler-autodiscover.yaml>)
 1. Resolve merge conflicts with the template in `manager/manifests/cluster-autoscaler.yaml.j2`.
-1. Clone our fork: `git clone git@github.com:cortexlabs/autoscaler.git`
-1. Checkout our updated branch: `git checkout cluster-autoscaler-1.21.1-cortex`
-1. List the most recent commit: `git log`
-1. Reset the latest commit (use the SHA of the last non-cortex commit): `git reset <SHA>`
-1. `git add .`
-1. `git stash`
-1. `git remote add upstream https://github.com/kubernetes/autoscaler.git`
-1. `git fetch upstream`
-1. Checkout the appropriate version tag, e.g. `git checkout cluster-autoscaler-1.22.2 -b cluster-autoscaler-1.22.2-cortex`
-1. `git stash pop`
-1. Resolve any merge conflicts
-1. Unstage and check the diff
-1. `git add *; git commit -am "Add rate limiter"`
-1. `git push origin cluster-autoscaler-1.22.2-cortex`
-1. Update `images/cluster-autoscaler/Dockerfile` to use the new branch name (e.g. "cluster-autoscaler-1.22.2") in the `-b` flag's value from `git clone`.
-1. Match the Go version of the builder in `images/cluster-autoscaler/Dockerfile` with that of the [cluster autoscaler's Dockerfile](https://github.com/kubernetes/autoscaler/blob/master/builder/Dockerfile).
+1. Compare the flags in `cluster-autoscaler.yaml.j2` with the new version's `--help`
+   (`docker run --rm registry.k8s.io/autoscaling/cluster-autoscaler:v<version> /cluster-autoscaler --help`); a flag
+   that no longer exists puts the pod into a crash loop.
+1. Update the tag in `images/cluster-autoscaler/Dockerfile` (`FROM registry.k8s.io/autoscaling/cluster-autoscaler:v<version>`).
+
+Note: up to cortex 0.45.0 (k8s 1.34) this image was built from our fork `PEAT-AI/autoscaler`
+(branch `cluster-autoscaler-<version>-cortex`), which added a scale-up rate limiter
+(`--scale-up-rate-limit-enabled`, `--scale-up-max-number-nodes-per-min`, `--scale-up-burst-number-nodes-per-min`).
+The fork was dropped with k8s 1.37: upstream moved the autoscaler core from `kubernetes/autoscaler` to
+`kubernetes-sigs/cluster-autoscaler` (Go module `sigs.k8s.io/cluster-autoscaler`), so the patch no longer applies to
+the forked repo, and at 50 nodes/min the limiter never triggered on a cluster of our size. If it is ever needed again,
+the patch has to be ported to a fork of `kubernetes-sigs/cluster-autoscaler`; the last branch with it is
+`cluster-autoscaler-1.34.1-cortex`.
 
 ## FluentBit
 
