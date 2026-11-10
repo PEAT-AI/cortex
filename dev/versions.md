@@ -173,11 +173,11 @@ wget -q -O cni_supported_instances_prev.txt https://raw.githubusercontent.com/aw
      ```shell
         mkdir -p $HOME/temp
         cd $HOME/temp
-        wget https://dl.google.com/go/go1.24.0.linux-amd64.tar.gz && \
-        tar -xvf go1.24.0.linux-amd64.tar.gz && \
+        wget https://dl.google.com/go/go1.27.4.linux-amd64.tar.gz && \
+        tar -xvf go1.27.4.linux-amd64.tar.gz && \
         sudo rm -rf /usr/local/go && \
         sudo mv -f go /usr/local && \
-        rm go1.24.0.linux-amd64.tar.gz && \
+        rm go1.27.4.linux-amd64.tar.gz && \
         if [ -f $HOME/.bash_profile ]; then source $HOME/.bash_profile; else source $HOME/.bashrc; fi && \
         cd - && \
         go version
@@ -228,6 +228,25 @@ see https://github.com/moby/moby/issues/39302#issuecomment-639687466_
 1. `git merge upstream/master`
 1. `git push origin master`
 1. Follow the "Update non-versioned modules" instructions using the desired commit sha for `cortexlabs/go-input`
+
+### Quick path: bump in place (used for k8s 1.37, try this first)
+
+This keeps the existing `go.mod` and only moves the modules tied to the Kubernetes / Istio versions. For 1.34 → 1.37 it resolved cleanly and needed no source changes.
+
+1. Set the `go` directive in `go.mod` to the Go version you are moving to (the installed Go fetches a newer toolchain on its own).
+1. `go get k8s.io/client-go@v0.37.2 k8s.io/apimachinery@v0.37.2 k8s.io/api@v0.37.2 k8s.io/metrics@v0.37.2`
+1. `go get sigs.k8s.io/controller-runtime@v0.25.2`
+   - controller-runtime must match the k8s minor: v0.22.x ↔ 1.34, v0.23.x ↔ 1.35, v0.24.x ↔ 1.36, v0.25.x ↔ 1.37.
+1. `go get istio.io/client-go@v1.31.4` (this picks the matching `istio.io/api` itself)
+1. `go get sigs.k8s.io/aws-iam-authenticator@v0.7.24`
+   - check the `go` line of its `go.mod` first: v0.7.24 needs Go ≥ 1.27.3, which is what decided our Go version.
+1. `go mod tidy && go build ./... && make test`
+1. Keep `github.com/getsentry/sentry-go` at v0.31.1 (newer versions break `sentry.Logger.SetOutput`) and `github.com/docker/docker` at v27.1.1+incompatible unless resolution forces a change.
+1. `git diff <base> -- go.mod` and check that direct dependencies only moved by small steps.
+
+Note: `github.com/aws/amazon-vpc-cni-k8s` is not imported anywhere any more, so there is no Go module to bump for the CNI.
+
+Only if the quick path cannot be made to resolve, fall back to the clean re-init below (replace the versions with the current ones).
 
 ### Non-versioned modules
 
