@@ -17,3 +17,6 @@
 **/hack/
 **/PROJECT
 **/Makefile
+
+# rendered local copy; only the .j2 template belongs in the manager image
+/manager/manifests/cluster-autoscaler.yaml
