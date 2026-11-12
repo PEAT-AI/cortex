@@ -919,6 +919,10 @@ func (cc *CoreConfig) SQSNamePrefix() string {
 }
 
 func (cc *Config) validate(awsClient *aws.Client) error {
+	if err := cc.validateCIDRWhiteLists(); err != nil {
+		return err
+	}
+
 	if cc.APILoadBalancerType == NLBLoadBalancerType {
 		isSupportedByNLB, err := aws.IsInstanceSupportedByNLB(cc.PrometheusInstanceType)
 		if err != nil {
@@ -2007,4 +2011,32 @@ func validateClusterName(clusterName string) (string, error) {
 
 func validateImageVersion(image string) (string, error) {
 	return cr.ValidateImageVersion(image, consts.CortexVersion)
+}
+
+// validateCIDRWhiteLists rejects load balancer whitelist entries like 10.1.2.3/24: kubernetes (1.37)
+// does not accept loadBalancerSourceRanges with bits set beyond the prefix length. This is only checked
+// for a config that is about to be applied (cluster up / cluster configure), not when parsing, because
+// the stored config of a cluster created before this check may contain such entries.
+func (cc *Config) validateCIDRWhiteLists() error {
+	whiteLists := []struct {
+		key   string
+		cidrs []string
+	}{
+		{APILoadBalancerCIDRWhiteListKey, cc.APILoadBalancerCIDRWhiteList},
+		{OperatorLoadBalancerCIDRWhiteListKey, cc.OperatorLoadBalancerCIDRWhiteList},
+	}
+
+	for _, whiteList := range whiteLists {
+		for i, cidr := range whiteList.cidrs {
+			ip, network, err := net.ParseCIDR(cidr)
+			if err != nil {
+				return errors.Wrap(err, whiteList.key, fmt.Sprintf("index %d", i))
+			}
+			if !ip.Equal(network.IP) {
+				return errors.Wrap(ErrorCIDRHostBitsSet(cidr, network.String()), whiteList.key, fmt.Sprintf("index %d", i))
+			}
+		}
+	}
+
+	return nil
 }

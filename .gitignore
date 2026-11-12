@@ -43,3 +43,5 @@ __pycache__/
 *~
 
 .history
+# rendered copy of cluster-autoscaler.yaml.j2 (local scratch file)
+/manager/manifests/cluster-autoscaler.yaml

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.25.3 as builder
+FROM golang:1.27.4 as builder
 
-RUN curl -LO https://dl.k8s.io/release/v1.34.0/bin/linux/amd64/kubectl && \
+RUN curl -LO https://dl.k8s.io/release/v1.37.2/bin/linux/amd64/kubectl && \
     mv ./kubectl /tmp/kubectl
 
 COPY go.mod go.sum /workspace/

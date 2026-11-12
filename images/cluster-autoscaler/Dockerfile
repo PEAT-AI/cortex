@@ -12,14 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG TARGETARCH, TARGETOS
-
-FROM golang:1.24.0 AS builder
-RUN git clone -b cluster-autoscaler-1.34.1-cortex --depth 1  https://github.com/PEAT-AI/autoscaler /k8s.io/autoscaler
-WORKDIR /k8s.io/autoscaler/cluster-autoscaler
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build --installsuffix cgo -o cluster-autoscaler k8s.io/autoscaler/cluster-autoscaler \
-    && cp cluster-autoscaler /usr/local/bin
-
-FROM alpine:3.21
-RUN apk add -U --no-cache ca-certificates && rm -rf /var/cache/apk/*
-COPY --from=builder /usr/local/bin/cluster-autoscaler .
+# Upstream image, unmodified. Until cortex 0.45.0 this was built from the PEAT-AI/autoscaler fork
+# (scale-up rate limiter). The fork was dropped with k8s 1.37: upstream moved the autoscaler core to
+# kubernetes-sigs/cluster-autoscaler, and the limiter (50 nodes/min) never triggers at our cluster size.
+FROM registry.k8s.io/autoscaling/cluster-autoscaler:v1.37.0

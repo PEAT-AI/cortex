@@ -649,3 +649,41 @@ The telemetry providers Lightstep and OpenCensus are now removed. Please use the
 Native sidecar enabled by default
 
 Native sidecars are now enabled by default for eligible pods. This changes istio-proxy from a container to an init container. This can cause compatibility issues with other mutating webhooks or controllers in your cluster that expect to modify the istio-proxy as a regular container. Please test your workloads and controllers to ensure they are compatible with this change.
+
+## 1.28
+
+Upgrade notes 1.27 → 1.28, checked against what cortex uses (IstioOperator install with `istioctl install -f`, profile `minimal`, `discoverySelectors`, two ingress gateways, no sidecar injection, no ambient, no Gateway API):
+
+- `seccompProfile` option for sidecar containers — affects cortex: no (opt-in, no sidecars).
+- InferencePool API v1 — no (not used).
+- Ambient / ztunnel `PASSTHROUGH` ServiceEntries — no (no ambient).
+- `BackendTLSPolicy` v1alpha3 removed — no (not used).
+- `METRIC_ROTATION_INTERVAL` / `METRIC_GRACEFUL_DELETION_INTERVAL` removed — no (not set).
+- From the change notes: "Fixed an issue where the PDB created by a default installation was blocking the draining of Kubernetes nodes." — **yes, visible**: with our config (1 replica / `minReplicas: 1`) istioctl ≥ 1.28 no longer creates the three PodDisruptionBudgets (`istiod`, `ingressgateway-apis`, `ingressgateway-operator`) that 1.27.3 created. Node drains are no longer blocked by them; a drain of the node holding the single gateway pod now evicts it. No config change made.
+
+## 1.29
+
+- Envoy `prometheus_stats` HTTP compression on by default — watch: Prometheus must still scrape the gateway proxies (check targets on the dev cluster). Off switch: `proxyConfig.statsCompression: false`.
+- Ambient DNS capture / iptables reconciliation / dry-run AuthorizationPolicy — no (no ambient).
+- Debug endpoint authorization on by default — no (no Kiali or other tooling reading istiod debug endpoints).
+- Circuit breaker "remaining" metrics off by default — no (not used in dashboards).
+- `base` Helm chart: duplicated istiod RBAC/ServiceAccount removed — no for a fresh cluster (only matters for in-place Helm upgrades).
+
+## 1.30
+
+- Gateway API CRDs must be v1.5.x — no (cortex uses Istio `Gateway`/`VirtualService`, no Gateway API CRDs installed).
+- CNI config file permissions / CNI agent `excludeNamespaces` — no (`cni.enabled: false`).
+- Untaint controller env var — no.
+- Sidecar proxy service namespace selection — no (no sidecars).
+- XDS debug endpoints need authentication (`istioctl ... --plaintext`) — no.
+
+## 1.31
+
+- GCP hosting retired (`gcr.io/istio-release`, `registry.istio.io`, `istio-release.storage.googleapis.com`) — checked: our images come from `docker.io/istio/pilot` and `docker.io/istio/proxyv2` (still published), and `downloadIstio` in the manager image pulls istioctl from GitHub releases. No change needed.
+- Unhealthy endpoints are now sent to proxies by default (unless `OutlierDetection.minHealthPercent` is set) — **watch**: gateway behaviour while API pods are not ready (rolling update, scale from zero). Off switch: `PILOT_AUTO_SEND_UNHEALTHY_ENDPOINTS=false` on istiod.
+- Auto-registered `WorkloadEntry` / HBONE label — no.
+- `PILOT_SPAWN_UPSTREAM_SPAN_FOR_GATEWAY` removed — no (not set).
+- ztunnel WDS reconnect size — no (no ambient).
+- XDS `api` generator needs control-plane identity — no.
+
+Offline check of our rendered `istio.yaml` (dev cluster config): `istioctl manifest generate -f` exits 0 with no warnings on both 1.27.3 and 1.31.4. Differences in what gets installed: 1.31.4 adds CRD `trafficextensions.extensions.istio.io`, drops the three PodDisruptionBudgets (see 1.28), and no longer sets `GOMEMLIMIT` on istiod. Images resolve to our `istio-pilot` and `istio-proxy`.

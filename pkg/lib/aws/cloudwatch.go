@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go/service/sts"
@@ -83,9 +82,7 @@ type CloudWatchWidgetGrid struct {
 }
 
 func (c *Client) getAccountID() (string, error) {
-	svc := sts.New(session.Must(session.NewSession()))
-	input := &sts.GetCallerIdentityInput{}
-	result, err := svc.GetCallerIdentity(input)
+	result, err := c.STS().GetCallerIdentity(&sts.GetCallerIdentityInput{})
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get account ID")
 	}

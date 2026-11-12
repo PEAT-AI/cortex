@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 # Modifications Copyright 2022 Cortex Labs, Inc.
-# Source: https://github.com/kubernetes/autoscaler/blob/cluster-autoscaler-1.22.2/cluster-autoscaler/cloudprovider/aws/examples/cluster-autoscaler-autodiscover.yaml
+# Source: https://github.com/kubernetes/autoscaler/blob/cluster-autoscaler-1.37.0/cluster-autoscaler/cloudprovider/aws/examples/cluster-autoscaler-autodiscover.yaml
 
 apiVersion: v1
 kind: ServiceAccount
@@ -65,6 +65,9 @@ rules:
     verbs: ["watch", "list"]
   - apiGroups: ["apps"]
     resources: ["statefulsets", "replicasets", "daemonsets"]
+    verbs: ["watch", "list", "get"]
+  - apiGroups: ["resource.k8s.io"]
+    resources: ["deviceclasses", "resourceslices", "resourceclaims"]
     verbs: ["watch", "list", "get"]
   - apiGroups: ["storage.k8s.io"]
     resources: ["storageclasses", "csinodes", "csidrivers", "csistoragecapacities", "volumeattachments"]
@@ -210,10 +213,11 @@ spec:
             - --ok-total-unready-count=30
             - --max-node-provision-time=8m
             - --scan-interval=20s
-            - --scale-up-rate-limit-enabled=true
-            - --scale-up-max-number-nodes-per-min=50
-            - --scale-up-burst-number-nodes-per-min=75
             - --node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/{{ config['cluster_name'] }}
+          env:
+            # required since cluster-autoscaler 1.35 (AWS SDK v2): the region is no longer looked up from the instance metadata
+            - name: AWS_REGION
+              value: {{ config['region'] }}
           volumeMounts:
             - name: ssl-certs
               mountPath: /etc/ssl/certs/ca-certificates.crt # /etc/ssl/certs/ca-bundle.crt for Amazon Linux Worker Nodes

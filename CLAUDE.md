@@ -83,7 +83,7 @@ make test-e2e-new
 ### Development Setup Requirements
 
 **Prerequisites:**
-- Go 1.24+ (see go.mod)
+- Go 1.27+ (see go.mod)
 - Docker with buildx (multi-arch support)
 - kubectl, eksctl, aws-cli v1
 - Python 3 with boto3, pyyaml
@@ -386,7 +386,7 @@ Kubernetes Cluster (EKS)
 ## Key Dependencies
 
 - **Istio**: VirtualService routing, traffic management, mesh observability
-- **Kubernetes 1.34+**: Native API, informers, CRDs
+- **Kubernetes 1.37**: Native API, informers, CRDs
 - **AWS SDK**: SQS, S3, IAM authentication, CloudWatch metrics
 - **Prometheus**: Metrics collection for autoscaling decisions
 - **Cobra**: CLI framework
@@ -544,10 +544,13 @@ docs/                          # Documentation (docs.cortexlabs.com)
 - `manager/generate_eks.py` - Generates EKS CloudFormation template
 - `CONTRIBUTING.md` - Detailed setup instructions and prerequisites
 
-## Notes on Current Branch (k8s_1.34_update)
+## Kubernetes version
 
-This branch is updating Kubernetes from an earlier version to 1.34. Key files being modified:
-- `go.mod` - Updated k8s.io/api, k8s.io/apimachinery, k8s.io/client-go to v0.32.3
-- `images/*/Dockerfile` - Updated kubectl to 1.34.0
-- `dev/versions.md` - Documentation of upgrade process
+The fork runs on EKS 1.37 (image tag `0.46.0`). Versions that have to move together:
+- `go.mod` - k8s.io/api, k8s.io/apimachinery, k8s.io/client-go v0.37.x; istio.io/client-go v1.31.x; controller-runtime v0.25.x
+- `images/*/Dockerfile` - kubectl 1.37.x; `images/manager/Dockerfile` - eksctl 0.231.0
+- `images/cluster-autoscaler/Dockerfile` - upstream cluster-autoscaler 1.37.0 (our fork was dropped with this version)
 - All images need to be rebuilt after K8s version changes
+
+Upgrade procedures are in `dev/versions.md`; what was done and found in the last round is in `k8s_1.37_update.md`.
+EKS 1.37 leaves standard support on 2027-12-01, so the next upgrade has to start by October 2027.
