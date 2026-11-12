@@ -7,13 +7,14 @@
 1. Update `generate_eks.py` if necessary
 1. Check that `eksctl utils write-kubeconfig` log filter still behaves as desired, and logs in `cortex cluster up` look good.
 1. Update eksctl on your dev
-   machine: `curl --location "https://github.com/weaveworks/eksctl/releases/download/v0.206.0/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp && sudo mv -f /tmp/eksctl /usr/local/bin`
+   machine: `curl --location "https://github.com/weaveworks/eksctl/releases/download/v0.231.0/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp && sudo mv -f /tmp/eksctl /usr/local/bin`
 1. Check if eksctl iam polices changed by comparing the previous version of the eksctl policy docs to the new version's and update `./dev/minimum_aws_policy.json` and `docs/clusters/management/auth.md` accordingly. https://github.com/weaveworks/eksctl/blob/v0.231.0/userdocs/src/usage/minimum-iam-policies.md
 
 ## Kubernetes
 
-1. Find the latest version of Kubernetes supported by
-   eksctl ([source code](https://github.com/weaveworks/eksctl/blob/master/pkg/apis/eksctl.io/v1alpha5/types.go))
+1. Find the newest Kubernetes version in standard support on EKS, and when each version leaves it:
+   `aws eks describe-cluster-versions --query "clusterVersions[].[clusterVersion,status,endOfStandardSupportDate]" --output text`.
+   Check in the [eksctl release notes](https://github.com/eksctl-io/eksctl/releases) that the eksctl version we install supports it.
 1. Update the version in `generate_eks.py`
 1. Update `ami.json` (see release checklist for instructions)
 1. See instructions for upgrading the Kubernetes client below
@@ -112,6 +113,9 @@
 1. Compare the spec of the `kube-proxy.patch.yaml` patch with the current spec of the kube-proxy daemoset and make sure it's still applicable. You can either inspect the `kube-proxy` command helper by exec-ing into the pod or by looking at the [kube-proxy](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy/) documentation for the respective version of Kubernetes.
 1. Once both config map and the daemonset are updated and the kube-proxy pod(s) has/have started, make sure you notice the `Using ipvs Proxier` log.
 
+Note: kube-proxy 1.37 logs that the ipvs proxier is deprecated (disabled by default in Kubernetes 1.40, removed in 1.43).
+The round that goes to 1.40 or later has to move `setup_ipvs` in `manager/install.sh` to the nftables proxier.
+
 ## aws-iam-authenticator
 
 1. Find the latest release [here](https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html)
@@ -152,7 +156,6 @@
 ## AWS CNI
 
 1. Update the CNI version in `generate_eks.py` ([CNI releases](https://github.com/aws/amazon-vpc-cni-k8s/releases))
-1. Update the go module version (see `Go > Non-versioned modules` section below)
 1. Check if new instance types were added by running the script below (update the two env vars at the top).
    1. If there are new instance types, check if any changes need to be made to `servicequotas.go` or `validateInstanceType()`.
 
@@ -246,14 +249,13 @@ This keeps the existing `go.mod` and only moves the modules tied to the Kubernet
 
 Note: `github.com/aws/amazon-vpc-cni-k8s` is not imported anywhere any more, so there is no Go module to bump for the CNI.
 
-Only if the quick path cannot be made to resolve, fall back to the clean re-init below (replace the versions with the current ones).
+Only if the quick path cannot be made to resolve, fall back to the clean re-init below. It was last run for k8s 1.34 and still shows the versions of that round; replace them with the current ones.
 
 ### Non-versioned modules
 
 1. `rm -rf go.mod go.sum && go mod init github.com/cortexlabs/cortex && go clean -modcache`
 1. `go get k8s.io/client-go@v0.34.0 && go get k8s.io/apimachinery@v0.34.0 && go get k8s.io/api@v0.34.0 && go get k8s.io/metrics@v0.34.0`
 1. `go get istio.io/client-go@v1.27.3 && go get istio.io/api@1.27.3`
-1. `go get github.com/aws/amazon-vpc-cni-k8s/pkg/awsutils@v1.20.3`
 1. `go get github.com/PEAT-AI/yaml@9ef823ab7fd0`
 1. `go get github.com/cortexlabs/go-input@8b67a7a7b28d1c45f5c588171b3b50148462b247`
 1. `go get github.com/xlab/treeprint@v1.2.0`
@@ -319,6 +321,8 @@ Only if the quick path cannot be made to resolve, fall back to the clean re-init
 1. Compare the flags in `cluster-autoscaler.yaml.j2` with the new version's `--help`
    (`docker run --rm registry.k8s.io/autoscaling/cluster-autoscaler:v<version> /cluster-autoscaler --help`); a flag
    that no longer exists puts the pod into a crash loop.
+1. Keep `AWS_REGION` in the `env` of `cluster-autoscaler.yaml.j2`. Since 1.35 the autoscaler no longer looks the region
+   up from the instance metadata and crash-loops without it.
 1. Update the tag in `images/cluster-autoscaler/Dockerfile` (`FROM registry.k8s.io/autoscaling/cluster-autoscaler:v<version>`).
 
 Note: up to cortex 0.45.0 (k8s 1.34) this image was built from our fork `PEAT-AI/autoscaler`
